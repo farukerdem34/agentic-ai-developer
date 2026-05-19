@@ -4,7 +4,7 @@
 
 **Native AI Keyboard** is an AI-powered custom keyboard extension for Android and iOS that feels close to the system keyboard experience. While composing messages or emails, users can fix typos, shorten, expand, or rewrite text using modes and actions on the keyboard—without copying text into an external AI app.
 
-Text transformation is powered by the **Google Gemini API**; API keys are stored only on the **NestJS backend**.
+Text transformation is powered by the **Google Gemini API**; the **Gemini API key** exists only as a **Supabase Edge Function Secret** (never on device, never in client-readable DB columns).
 
 ## Problem Statement
 
@@ -33,14 +33,14 @@ Native AI Keyboard brings AI-assisted editing **where you type**:
 | **Keyboard modes** | Work · Friends · Family · Flirt (tone and prompt templates change) |
 | **Color themes** | Light / dark and customizable palettes |
 | **Native look & feel** | UI aligned with Android Material and iOS keyboard patterns |
-| **Centralized AI** | Gemini via backend—secure and measurable |
+| **Centralized AI** | Gemini via **Supabase Edge Functions**—secure and measurable |
 
 ## Goals
 
 - Edit user text in one tap based on selected mode and action
 - Remove the need to switch to external AI apps
 - Deliver consistent UX on Android and iOS
-- Centralize API keys and prompt logic on the backend
+- Centralize API keys and prompt logic in **Supabase Edge Functions** (server)
 - Support Turkish and English text in the MVP
 
 ## Non-Goals (out of MVP scope)
@@ -62,7 +62,7 @@ Native AI Keyboard brings AI-assisted editing **where you type**:
 |-----------|----------|------------------------|
 | Keyboard (Android) | Android 8+ (API 26+) | **Kotlin** — `InputMethodService` |
 | Keyboard (iOS) | iOS 15+ | **Swift** — Keyboard Extension |
-| Backend API | Cloud (Docker) | **TypeScript — NestJS** |
+| Backend API | Supabase (Edge Functions + Postgres) | **TypeScript** on Deno edge; REST-style HTTPS |
 | AI service | Google AI | **Gemini API** |
 | Settings app | Phase 2 | Native companion or minimal settings Activity |
 
@@ -79,9 +79,9 @@ Reference mockup (Day 01 — light theme, default keyboard):
 ## Technical Stack
 
 - **Mobile (keyboard):** Platform-native (Kotlin + Swift)
-- **Backend:** NestJS, REST API
-- **Database:** PostgreSQL (settings, usage logs)
-- **Cache / rate limit:** Redis
+- **Backend:** Supabase — **Edge Functions** (transform, register-device), **PostgreSQL** (devices, optional usage/settings)
+- **Secrets:** Gemini key in **Supabase Secrets** only
+- **Rate limit:** **Local** debounce on keyboard + optional **Postgres** daily counters in Edge Function (no Redis)
 - **AI:** Google Gemini (`gemini-2.0-flash` or current flash model)
 
 ## System Architecture
@@ -90,16 +90,16 @@ Reference mockup (Day 01 — light theme, default keyboard):
 sequenceDiagram
   participant User
   participant Keyboard
-  participant Backend
+  participant EdgeFn as EdgeFunction
   participant Gemini
 
   User->>Keyboard: Types or selects text
   User->>Keyboard: Selects mode and action
-  Keyboard->>Backend: POST /v1/transform
-  Backend->>Backend: Build prompt template
-  Backend->>Gemini: generateContent
-  Gemini-->>Backend: Transformed text
-  Backend-->>Keyboard: JSON response
+  Keyboard->>EdgeFn: POST transform with Bearer
+  EdgeFn->>EdgeFn: Build prompt template
+  EdgeFn->>Gemini: generateContent
+  Gemini-->>EdgeFn: Transformed text
+  EdgeFn-->>Keyboard: JSON response
   Keyboard->>User: Updates text in field
 ```
 
@@ -112,44 +112,41 @@ flowchart TB
     iOSKB[iOS Keyboard]
   end
 
-  subgraph api [NestJS Backend]
-    GW[Auth Guard]
-    Transform[Transform Module]
-    Prompt[Prompt Template Service]
-    GeminiSvc[Gemini Client]
-    Usage[Rate Limit]
-    Settings[Settings Module]
+  subgraph supa [Supabase]
+    EF[Edge Functions]
+    Prompt[Prompt templates in code]
+    GeminiSvc[Gemini HTTP client]
+    Usage[Optional Postgres usage cap]
+    Settings[Optional device_settings]
   end
 
   subgraph external [External]
     Gemini[Google Gemini API]
     DB[(PostgreSQL)]
-    Redis[(Redis)]
   end
 
-  AndroidKB --> GW
-  iOSKB --> GW
-  GW --> Transform
-  Transform --> Prompt
-  Transform --> Usage
-  Transform --> GeminiSvc
+  AndroidKB --> EF
+  iOSKB --> EF
+  EF --> Prompt
+  EF --> Usage
+  EF --> GeminiSvc
   GeminiSvc --> Gemini
+  Usage --> DB
   Settings --> DB
-  Usage --> Redis
 ```
 
 | Module | Responsibility |
 |--------|----------------|
-| **Auth** | Device token / JWT; MVP uses device ID + quota |
-| **Transform** | text + mode + action → Gemini → result |
-| **Prompt Template** | Mode × action system prompts |
-| **Gemini Client** | Model calls, timeout, retry |
-| **Usage** | Daily request limits |
-| **Settings** | Theme, default mode, locale |
+| **register-device** | Persist `deviceId`, issue `deviceToken` |
+| **transform** | Validate → optional usage check → prompt → Gemini → JSON |
+| **Prompt templates** | Mode × action × locale × theme |
+| **Secrets** | `GEMINI_API_KEY` only in Supabase |
+| **Usage (optional)** | Per-device daily count in Postgres |
+| **Settings (optional)** | Server-side prefs sync |
 
 ## AI Integration (Gemini)
 
-- All requests go through the backend; **no API keys on mobile clients**
+- All requests go through **Supabase Edge Functions**; **no API keys on mobile clients**
 - Each request: `systemPrompt(mode, action, locale)` + user text
 - Validate empty or overly long responses before returning to the keyboard
 - User-friendly errors on timeout or quota exceeded
@@ -170,7 +167,7 @@ flowchart TB
 1. User types in WhatsApp / Mail / Slack
 2. Selects **Work** mode on the keyboard
 3. Taps **Correct**
-4. Backend returns edited text; keyboard inserts it into the field
+4. Edge Function returns edited text; keyboard inserts it into the field
 
 ### Flow 2: Tone change
 
@@ -202,7 +199,7 @@ flowchart TB
 ## Security & Privacy
 
 - HTTPS required
-- Gemini API key only in server environment variables
+- Gemini API key only in **Supabase Edge Function Secrets**
 - Text logs: short TTL or masking; not used for model training
 - iOS **Full Access** requirement explained clearly to users
 - Play Store / App Store privacy policy and keyboard permission copy
@@ -213,9 +210,9 @@ flowchart TB
 
 | Day | Topic |
 |-----|--------|
-| 01 | Repo, docs, NestJS scaffold, health |
-| 02 | Gemini + prompt templates (TR/EN; theme/tone hooks) |
-| 03 | `POST /v1/transform`, auth stub, rate limit |
+| 01 | Repo, docs, Supabase project, Edge Function stub, health |
+| 02 | Prompt templates in shared code + Gemini call from Edge Function (dev) |
+| 03 | `transform` + `register-device`; Bearer tokens; optional Postgres usage cap |
 | 04 | Android IME skeleton, QWERTY, locale |
 | 05 | Android AI bar + API |
 | 06 | Android modes + light/dark + long-press alternates |
@@ -233,8 +230,8 @@ Details: [roadmap.md](./roadmap.md)
 ## Core Directives
 
 1. **Native keyboard:** Keyboard UI is Kotlin (Android) and Swift (iOS); Flutter does not support keyboard extensions.
-2. **Backend required:** All AI calls go through NestJS.
-3. **Centralized prompts:** Mode and action templates are versioned on the backend.
+2. **Backend required:** All AI calls go through **Supabase Edge Functions** (server-side); keys in **Supabase Secrets**.
+3. **Centralized prompts:** Mode and action templates live in Edge Function code (versioned with Git).
 4. **Privacy first:** Minimum data collection, transparent permissions.
 5. **MVP focus:** TR/EN locales and 4 modes first; expand in later phases.
 
@@ -244,7 +241,7 @@ Details: [roadmap.md](./roadmap.md)
 |------|------------|
 | iOS keyboard constraints (Full Access) | Early testing; clear onboarding |
 | API latency | Loading state, timeout, retry |
-| Gemini cost | Rate limits, flash model, max text length |
+| Gemini cost | Flash model, max text length, **local debounce** + optional **Postgres** daily cap per `deviceId` |
 | Poor AI output | Max length checks, empty response handling |
 | Store rejection (privacy) | Data policy and minimal logging |
 

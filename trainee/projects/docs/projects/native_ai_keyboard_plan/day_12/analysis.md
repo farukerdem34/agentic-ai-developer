@@ -11,7 +11,7 @@ Reach **parity with Android Day 07**: after AI response, show **preview** UI wit
 
 ### Backend Endpoints
 
-- **Used:** `POST /v1/transform` only.
+- **Used:** `POST .../functions/v1/transform` only.
 
 ## Tasks
 

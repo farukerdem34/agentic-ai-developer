@@ -11,9 +11,9 @@ gantt
   title Native AI Keyboard MVP 7 plus 7
   dateFormat  YYYY-MM-DD
   section AndroidWeek
-  D01 setup backend scaffold    :a1, 1d
-  D02 Gemini prompts            :a2, 1d
-  D03 transform API             :a3, 1d
+  D01 Supabase scaffold Edge stub :a1, 1d
+  D02 Gemini prompts in Edge      :a2, 1d
+  D03 register transform functions  :a3, 1d
   D04 Android IME skeleton      :a4, 1d
   D05 Android AI bar API        :a5, 1d
   D06 Android modes themes      :a6, 1d
@@ -34,9 +34,9 @@ gantt
 
 | Day | Track | Focus | Deliverable |
 |-----|--------|--------|-------------|
-| **01** | Backend + project | Repo, docs, NestJS scaffold, health | Runnable API shell; plan/docs aligned |
-| **02** | Backend | Gemini client, prompt templates TR/EN, theme/tone hooks in prompts | `PromptTemplateService` + env wiring |
-| **03** | Backend | Core API | `POST /v1/transform`, device auth stub, Redis rate limit |
+| **01** | Backend + project | Repo, docs, **Supabase** init, `devices` table, Edge health stub | Linked project + deployable function shell |
+| **02** | Backend | Gemini from Edge + **prompt templates** (TR/EN; theme hooks) in `_shared/` | Successful dev invoke to Gemini |
+| **03** | Backend | **`register-device`** + **`transform`**; Bearer; optional **Postgres** daily usage cap | Android Day 05 can call HTTPS endpoints |
 | **04** | Android | IME base | `InputMethodService`, QWERTY layout, TR/EN keyboard locale switch (host text locale) |
 | **05** | Android | AI surface | Action bar wired to `/transform`, loading/error states |
 | **06** | Android | UX | Mode strip, light/dark theme, long-press alternate keys (e.g. i → ı) baseline |
@@ -59,9 +59,9 @@ gantt
 ```mermaid
 flowchart TD
   subgraph androidWeek [Days 1 to 7 Android plus backend]
-    D01[Day 01 Scaffold]
-    D02[Day 02 Gemini]
-    D03[Day 03 Transform API]
+    D01[Day 01 Supabase scaffold]
+    D02[Day 02 Gemini Edge]
+    D03[Day 03 register transform]
     D04[Day 04 Android IME]
     D05[Day 05 Android AI bar]
     D06[Day 06 Android UX]

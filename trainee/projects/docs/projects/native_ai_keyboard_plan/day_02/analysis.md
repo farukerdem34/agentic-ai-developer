@@ -1,26 +1,26 @@
-# Day 02 Analysis: Gemini Client & Prompt Templates
+# Day 02 Analysis: Gemini + Prompt Templates in Edge Functions
 
 ## Objective
 
-Integrate **Google Gemini** in the NestJS backend and implement **PromptTemplateService** so every combination of `mode`, `action`, `locale`, and optional **`theme`** (light/dark) maps to a deterministic system prompt. TR and EN template sets.
+From an **Edge Function** (`transform` dev branch or separate `gemini-smoke`), call **Google Gemini** using **`GEMINI_API_KEY`** from **Supabase Secrets**. Implement **prompt template map** (`mode`, `action`, `locale`, optional `theme`) as shared TypeScript under `supabase/functions/_shared/`.
 
 ## Architecture & Packages
 
-- **Module:** `gemini/` — thin client: timeout, single retry on 5xx, `GEMINI_API_KEY` from env.
-- **Module:** `prompt/` — `PromptTemplateService`; templates in code or JSON; inputs: `mode`, `action`, `locale`, `theme?`.
+- **Runtime:** Deno inside Supabase Edge Functions (not NestJS).
+- **Shared:** `_shared/prompts.ts` — all TR/EN combinations; theme-aware wording where needed.
 
 ### Backend Endpoints
 
-- **None new for clients today** (optional internal `GET /prompts/preview` behind dev flag per [spec/api_endpoints.md](../spec/api_endpoints.md)).
-- **Consumed internally:** Gemini `generateContent` from a test script or temporary controller (remove or guard before production).
+- **Internal:** Gemini HTTP from Edge only.
+- **Optional:** dev-only route to print resolved system prompt (never in production).
 
 ## Tasks
 
-1. Add `@google/generative-ai` (or chosen SDK) dependency; configure model id (e.g. flash).
-2. Implement `GeminiClient.generate(systemPrompt, userText)` with max output length guard.
-3. Implement all **mode × action × locale** matrix rows; add **theme-aware** phrasing where product requires different tone for dark vs light (document in template comments).
-4. Unit-test at least 2 template paths (e.g. `work` + `correct` + `tr` + `light`).
-5. Document env vars in `backend/.env.example` (no real keys).
+1. Add Secret `GEMINI_API_KEY` in Supabase; read via `Deno.env.get` in function.
+2. Implement `generate(systemPrompt, userText)` with timeout + single retry.
+3. Cover MVP **mode × action × locale** matrix; export builder function.
+4. Unit-test locally with `supabase functions serve` + curl (or Deno test if used).
+5. Document model id (e.g. flash) in `supabase/README` or root README.
 
 ## UI / Client Focus
 
@@ -28,11 +28,10 @@ Integrate **Google Gemini** in the NestJS backend and implement **PromptTemplate
 
 ## Checklist
 
-- [ ] Gemini call succeeds from backend with test prompt
-- [ ] All MVP mode/action/locale combinations return non-empty system strings
-- [ ] Theme hook present in template API (even if same string for MVP)
-- [ ] No API key in repo
+- [ ] Gemini succeeds from Edge with test prompt
+- [ ] All MVP template keys return non-empty system strings
+- [ ] Secret never logged or returned to client
 
 ## Related
 
-- [spec/architecture.md](../spec/architecture.md) · [spec/overview.md](../spec/overview.md) (AI Integration section)
+- [spec/architecture.md](../spec/architecture.md) · [spec/overview.md](../spec/overview.md)

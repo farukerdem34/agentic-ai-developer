@@ -11,7 +11,7 @@ Before replacing host text, show **preview** of AI result with **Accept** and **
 
 ### Backend Endpoints
 
-- **Used:** same `POST /v1/transform` (no second round-trip for MVP accept).
+- **Used:** same `POST .../functions/v1/transform` (no second round-trip for MVP accept).
 
 ## Tasks
 

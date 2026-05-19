@@ -11,7 +11,7 @@ Implement **four modes** with persisted selection (App Group or extension `UserD
 
 ### Backend Endpoints
 
-- **Used:** `POST /v1/transform` with `mode` + `theme` fields.
+- **Used:** `POST .../functions/v1/transform` with `mode` + `theme` fields.
 
 ## Tasks
 

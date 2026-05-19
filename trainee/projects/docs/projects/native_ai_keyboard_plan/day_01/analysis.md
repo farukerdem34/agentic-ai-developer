@@ -1,40 +1,41 @@
-# Day 01 Analysis: Repo, Documentation & Backend Scaffold
+# Day 01 Analysis: Repo, Documentation & Supabase Scaffold
 
 ## Objective
 
-Establish the **monorepo layout** under `trainee/projects/native_ai_keyboard/`, finalize **plan documentation** in this folder, and ship a **runnable NestJS shell** with `GET /health` so Day 02 can add Gemini.
+Establish the **monorepo layout** under `trainee/projects/native_ai_keyboard/`, finalize **plan documentation** in this folder, and create a **Supabase project** with **Edge Function** stub (`health` or `transform` echo) so Day 02 can add Gemini + prompts.
 
-> Full product intent, stack, and features: [README.md](../README.md) · [spec/overview.md](../spec/overview.md)
+> Full product intent: [README.md](../README.md) · [spec/overview.md](../spec/overview.md)
 
 ## Architecture & Packages
 
-- **Backend:** NestJS app in `native_ai_keyboard/backend/` (or agreed subpath).
-- **Docs:** `native_ai_keyboard_plan/spec/*`, daily `day_XX/analysis.md`, assets under `assets/mockups/`.
+- **Backend:** **Supabase** — Postgres + Edge Functions (Deno/TypeScript). Repo folder e.g. `native_ai_keyboard/supabase/` (migrations + `functions/`).
+- **Secrets:** `GEMINI_API_KEY` set only in Supabase Dashboard (Edge Secrets), not committed.
+- **Docs:** `native_ai_keyboard_plan/spec/*`, daily `day_XX/analysis.md`.
 
 ### Backend Endpoints
 
-- **Implemented today:** `GET /health` (JSON `ok` + version placeholder).
-- **Not yet:** `POST /transform`, device register — documented only in [spec/api_endpoints.md](../spec/api_endpoints.md).
+- **Implemented today (optional):** `GET` or `POST` health-style Edge Function returning JSON `ok`.
+- **Not yet:** `register-device`, `transform` — see [spec/api_endpoints.md](../spec/api_endpoints.md).
 
 ## Tasks
 
-1. **Repo / folders:** Create `backend/`, `android-keyboard/`, `ios-keyboard/` directories (empty or with minimal README) if not present.
-2. **NestJS:** `nest new` or equivalent in `backend/`; `AppModule` clean; global validation pipe optional.
-3. **Health:** `HealthController` or inline route returning `{ "status": "ok", "version": "0.1.0" }`.
-4. **Docs:** Ensure [spec/roadmap.md](../spec/roadmap.md) matches 7+7 schedule; reference mockup present at `assets/mockups/keyboard_default_light.png`.
-5. **Run locally:** `npm run start:dev` (or project script) starts without error.
+1. **Repo / folders:** `supabase/` (CLI layout), `android-keyboard/`, `ios-keyboard/` placeholders with README.
+2. **Supabase:** `supabase init`; link project; SQL migration for `devices` table (`device_id`, `platform`, `device_token`, `created_at`).
+3. **Edge Function:** minimal `health` or `hello` deployed with `supabase functions serve` / deploy pipeline documented.
+4. **Docs:** Ensure [spec/roadmap.md](../spec/roadmap.md) matches Supabase backend wording.
+5. **Local dev:** Document `supabase start` (optional Docker) or remote dev project.
 
 ## UI / Client Focus
 
-- None (keyboard UI starts Day 04 Android). Optional: keep mockup linked from [spec/ui_design.md](../spec/ui_design.md).
+- None (keyboard UI starts Day 04 Android).
 
 ## Checklist
 
-- [ ] `backend/` NestJS project runs locally
-- [ ] `GET /health` returns 200 JSON
-- [ ] Plan docs and README aligned with [README.md](../README.md)
-- [ ] Folder placeholders for `android-keyboard/`, `ios-keyboard/` exist
+- [ ] Supabase project created; `supabase/` linked
+- [ ] `devices` migration applied (empty table OK)
+- [ ] At least one Edge Function deployable locally or to cloud
+- [ ] `GEMINI_API_KEY` **not** in git; placeholder in docs only
 
 ## Related
 
-- [README.md](../README.md) · [spec/roadmap.md](../spec/roadmap.md) · [spec/architecture.md](../spec/architecture.md)
+- [README.md](../README.md) · [spec/architecture.md](../spec/architecture.md) · [spec/api_endpoints.md](../spec/api_endpoints.md)

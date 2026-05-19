@@ -2,7 +2,9 @@
 
 ## Overview
 
-Native AI Keyboard consists of three main components: **Android keyboard**, **iOS keyboard**, and **NestJS backend**. Mobile clients send only text, mode, and action; AI logic and Gemini integration stay on the server.
+Native AI Keyboard has three layers: **Android keyboard** (Kotlin), **iOS keyboard** (Swift), and **Supabase-backed server logic** (PostgreSQL + **Edge Functions**). Mobile clients never hold the **Gemini API key**; they send `text`, `mode`, `action`, `locale`, optional `theme`, and a **device identifier** after registration.
+
+**No NestJS** in this architecture: HTTP API and Gemini calls live in **Supabase Edge Functions** (TypeScript/Deno). **No Redis**: rate limiting uses **local client throttling** plus optional **Postgres rows** for usage visibility / soft server caps.
 
 ## High-Level Diagram
 
@@ -13,28 +15,21 @@ flowchart LR
     I[iOS Keyboard Extension Swift]
   end
 
-  subgraph server [Application Layer]
-    API[NestJS REST API]
-    PT[Prompt Templates]
-    GC[Gemini Client]
-  end
-
-  subgraph data [Data Layer]
+  subgraph supa [Supabase]
+    EF[Edge Functions]
     PG[(PostgreSQL)]
-    RD[(Redis)]
+    SEC[Secrets GEMINI_API_KEY]
   end
 
   subgraph ai [External AI]
     G[Google Gemini]
   end
 
-  A --> API
-  I --> API
-  API --> PT
-  API --> GC
-  GC --> G
-  API --> PG
-  API --> RD
+  A --> EF
+  I --> EF
+  EF --> SEC
+  EF --> PG
+  EF --> G
 ```
 
 ## Mobile Architecture
@@ -45,8 +40,8 @@ flowchart LR
 |-----------|------------|-------------|
 | IME service | `InputMethodService` | System keyboard entry point |
 | Layout | XML + custom `KeyboardView` | QWERTY + action bar |
-| Networking | Retrofit / OkHttp | Backend REST |
-| State | `SharedPreferences` | Last mode, theme |
+| Networking | Retrofit / OkHttp | `POST` to Supabase Edge Function URLs |
+| State | `SharedPreferences` | Last mode, theme, **local rate-limit counters** (UX / backoff) |
 | Theme | Resource qualifiers + runtime | Light / dark |
 
 ### iOS (Swift)
@@ -55,64 +50,55 @@ flowchart LR
 |-----------|------------|-------------|
 | Extension | `KeyboardViewController` | Keyboard UI |
 | Layout | Auto Layout / UIStackView | Native spacing |
-| Networking | `URLSession` | Backend REST |
-| State | App Group `UserDefaults` | Settings shared with companion app |
+| Networking | `URLSession` | Edge Function HTTPS |
+| State | App Group `UserDefaults` | Settings; **local rate-limit counters** |
 | Permission | Full Access | Required for network requests |
 
-## Backend Architecture (NestJS)
+## Backend Architecture (Supabase)
 
-### Module structure
+### Components
+
+| Piece | Role |
+|-------|------|
+| **Edge Functions** | `register-device`, `transform` (and optional `health`, `settings` HTTP handlers). Validate body, read **Secrets** (`GEMINI_API_KEY`), call Gemini, return JSON. |
+| **PostgreSQL** | `devices` (who uses the keyboard), optional `device_settings`, optional `usage_events` or daily counters for **analytics** and soft server-side caps. |
+| **Supabase Secrets** | Gemini API key **only** here (Edge runtime env). Never stored in a client-readable table. |
+
+### Suggested Edge Function layout
 
 ```
-src/
-├── main.ts
-├── app.module.ts
-├── auth/
-│   ├── auth.module.ts
-│   ├── device-auth.guard.ts
-│   └── device.service.ts
-├── transform/
-│   ├── transform.module.ts
-│   ├── transform.controller.ts
-│   ├── transform.service.ts
-│   └── dto/
-├── prompt/
-│   ├── prompt.module.ts
-│   └── prompt-template.service.ts
-├── gemini/
-│   ├── gemini.module.ts
-│   └── gemini.client.ts
-├── usage/
-│   ├── usage.module.ts
-│   └── rate-limit.guard.ts
-└── settings/
-    ├── settings.module.ts
-    └── settings.service.ts
+supabase/functions/
+├── register-device/index.ts   # upsert device by deviceId + platform
+├── transform/index.ts       # main AI path: validate → optional DB quota → Gemini → JSON
+└── _shared/
+    └── prompts.ts           # mode × action × locale × theme templates
 ```
 
 ### Transform pipeline
 
 ```mermaid
 flowchart TD
-  Req[POST /v1/transform] --> Validate[DTO Validation]
-  Validate --> Rate[Rate Limit Check]
-  Rate --> Build[Build Prompt from mode + action]
-  Build --> Call[Gemini API Call]
-  Call --> Post[Post-process result]
-  Post --> Log[Usage Log optional]
-  Log --> Res[JSON Response]
+  Req[POST transform] --> Validate[Validate JSON body]
+  Validate --> Auth[Verify Bearer device token]
+  Auth --> LocalHint[Optional read client sent retry after ms]
+  Auth --> Quota[Optional Postgres daily count per device]
+  Quota --> Build[Build prompt mode action locale theme]
+  Build --> Call[Gemini generateContent]
+  Call --> Post[Trim validate length]
+  Post --> Log[Insert usage row optional]
+  Log --> Res[JSON response]
 ```
 
-1. Validate request (`text`, `mode`, `action`, `locale`)
-2. Check device quota via Redis
-3. `PromptTemplateService` builds the system prompt
-4. `GeminiClient` calls the model
-5. Trim and validate result length
-6. Return response
+1. Validate `text`, `mode`, `action`, `locale`, optional `theme`.
+2. Authenticate **Bearer** token issued at device registration (secret signed or Supabase Auth pattern — MVP: opaque token stored with device row).
+3. **Optional:** increment `usage_daily(device_id, date)` or append `usage_events`; reject with `429` if over soft cap (server truth for abuse).
+4. Build system prompt from shared template map.
+5. Call Gemini using **Secret** `GEMINI_API_KEY`.
+6. Post-process; return `{ result, ... }`.
 
-### Prompt Template Service
+### Prompt templates
 
-Templates live in code or JSON files:
+Same conceptual model as before; implemented as TypeScript module inside Edge Functions repo:
 
 ```typescript
 // Conceptual structure
@@ -120,63 +106,67 @@ interface PromptTemplate {
   mode: 'work' | 'friends' | 'family' | 'flirt';
   action: 'correct' | 'rewrite' | 'shorten' | 'expand';
   locale: 'tr' | 'en';
+  theme?: 'light' | 'dark' | 'system';
   systemPrompt: string;
 }
 ```
 
-Each combination has its own system instruction; user text is sent as the user message.
-
-### Gemini Client
+### Gemini client (inside Edge Function)
 
 - Model: `gemini-2.0-flash` (or current flash variant)
 - Timeout: 15–30 seconds
 - Retry: once on 5xx / timeout
-- Env: `GEMINI_API_KEY`
+- Key: **Supabase Secret** `GEMINI_API_KEY` (not `POSTGRES` URL in app code on device)
 
 ### Data stores
 
 | Store | Usage |
 |-------|--------|
-| **PostgreSQL** | `devices`, `settings`, `usage_logs` (optional) |
-| **Redis** | Rate limit counters, short-lived cache |
+| **PostgreSQL (Supabase)** | `devices` — register **deviceId** (client UUID or server-generated), `platform`, `created_at`, `device_token` (opaque bearer). Optional `device_settings`. Optional `usage_daily` / `usage_events` for “how many users / how many calls”. |
+| **Redis** | **Not used** in MVP. |
 
 ### Sample tables (MVP)
 
 **devices**
 
-| Field | Type |
-|-------|------|
-| id | UUID |
-| device_token | string |
-| platform | android \| ios |
-| created_at | timestamp |
+| Field | Type | Notes |
+|-------|------|--------|
+| id | UUID | Primary key |
+| device_id | text | Unique; stable id from keyboard (generated once, stored in prefs / Keychain) |
+| platform | text | `android` \| `ios` |
+| device_token | text | Opaque bearer; returned once at register; stored hashed if desired |
+| created_at | timestamptz | |
 
-**settings**
+**usage_daily** (optional, for visibility + server cap)
 
 | Field | Type |
 |-------|------|
 | device_id | UUID FK |
-| default_mode | string |
-| theme | light \| dark \| system |
-| locale | tr \| en |
+| day | date |
+| transform_count | int |
+
+### Rate limiting strategy
+
+| Layer | Purpose |
+|-------|---------|
+| **Local (keyboard)** | Debounce taps, min interval between calls, simple counters in `SharedPreferences` / `UserDefaults` — improves UX and reduces accidental spam (**not security**). |
+| **Edge Function + Postgres** | Optional hard/soft cap per `device_id` per day; returns `429 RATE_LIMIT_EXCEEDED`. Primary abuse control for production. |
 
 ## Security
 
-- TLS 1.2+ required
-- `Authorization: Bearer <device_token>` header
-- Request body max size (e.g. 4 KB text)
-- Rate limit: e.g. 50 requests / hour / device (MVP)
-- Prefer hashed or truncated text in logs instead of raw content
+- TLS 1.2+ (Supabase HTTPS endpoints).
+- `Authorization: Bearer <device_token>` on `transform` (and `settings` if implemented server-side).
+- Request body max size (e.g. 4 KB text) enforced in Edge Function.
+- **Gemini API key:** only **Supabase Edge Function Secrets**; never in mobile binary, never in public RLS-readable columns.
+- Log minimal fields; avoid raw full user text in logs where possible.
 
-## Deployment (recommended)
+## Deployment
 
-- Docker container (NestJS)
-- Environments: `staging`, `production`
-- Secrets: Gemini key, DB URL, Redis URL via vault or CI secrets
-- Health check: `GET /health`
+- **Supabase project** per environment (`staging`, `production`).
+- Deploy Edge Functions via Supabase CLI / CI.
+- Database migrations via Supabase SQL migrations.
 
 ## Observability
 
-- Structured logging (request id, latency, mode, action)
-- Error rate and Gemini timeout metrics
-- Post-MVP: Sentry / OpenTelemetry
+- Edge Function `console` / Supabase logs (request id, latency, mode, action).
+- Post-MVP: Sentry on clients; OpenTelemetry if needed.

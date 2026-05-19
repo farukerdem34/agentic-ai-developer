@@ -11,7 +11,7 @@ Add **mode strip** (Work / Friends / Family / Flirt) with persisted selection, *
 
 ### Backend Endpoints
 
-- **Used:** `POST /v1/transform` — include selected `mode` and `theme` in body if backend prompt uses them (Day 02 hooks).
+- **Used:** `POST .../functions/v1/transform` — include selected `mode` and `theme` in body if prompt uses them (Day 02 hooks).
 
 ## Tasks
 

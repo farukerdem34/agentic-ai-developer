@@ -1,6 +1,6 @@
 # Native AI Keyboard — Project Plan
 
-AI-powered **custom keyboard** for Android and iOS: users fix, shorten, expand, or rewrite text **where they type**, with tone controlled by **modes** (Work, Friends, Family, Flirt). All **Gemini** calls go through a **NestJS** backend (API keys never on device).
+AI-powered **custom keyboard** for Android and iOS: users fix, shorten, expand, or rewrite text **where they type**, with tone controlled by **modes** (Work, Friends, Family, Flirt). All **Gemini** calls go through **Supabase Edge Functions**; the **Gemini API key** lives only in **Supabase Secrets** (never on device).
 
 **Schedule:** **7 days** Android + shared backend, then **7 days** iOS, then shared QA and ship. Details: [spec/roadmap.md](./spec/roadmap.md).
 
@@ -22,7 +22,7 @@ flowchart LR
     A[Android IME Kotlin]
     I[iOS Extension Swift]
   end
-  B[NestJS REST]
+  B[Supabase Edge Functions]
   G[Gemini API]
   A --> B
   I --> B
@@ -30,8 +30,8 @@ flowchart LR
 ```
 
 - **Clients:** Native IME only (no Flutter for the keyboard UI).
-- **Backend:** Validate → rate limit → build prompt (mode × action × locale × theme) → Gemini → post-process → JSON.
-- **Data:** PostgreSQL (devices, settings), Redis (rate limits). See [spec/architecture.md](./spec/architecture.md).
+- **Backend:** Supabase **Edge Functions** — validate → optional Postgres usage cap → build prompt (mode × action × locale × theme) → Gemini → post-process → JSON.
+- **Data:** **Supabase Postgres** (`devices`, optional settings/usage). **Rate limit:** local debounce on keyboard + optional daily counter in Postgres (no Redis). See [spec/architecture.md](./spec/architecture.md).
 
 ---
 
@@ -41,11 +41,12 @@ flowchart LR
 |-------|------------|
 | Android keyboard | Kotlin, `InputMethodService`, Material |
 | iOS keyboard | Swift, Keyboard Extension, URLSession |
-| Backend | TypeScript, NestJS, REST |
+| Backend | Supabase Edge Functions (TypeScript / Deno), HTTPS |
 | AI | Google Gemini (e.g. flash model) |
-| Database | PostgreSQL |
-| Rate limit / cache | Redis |
-| Deploy | Docker (recommended) |
+| Database | Supabase (PostgreSQL) |
+| Secrets | Supabase Edge Secrets (`GEMINI_API_KEY`) |
+| Rate limit | Local client debounce + optional Postgres daily caps (no Redis) |
+| Deploy | Supabase CLI / hosted Supabase project |
 
 ---
 
@@ -59,7 +60,7 @@ flowchart LR
 | **Themes** | Light and dark keyboard chrome; prompt may include theme-aware tone hints |
 | **Typing** | QWERTY baseline; **long-press** alternate characters (e.g. i → ı) where platform allows |
 | **AI result** | **Preview** with **Accept** / **Cancel** before replacing host field text |
-| **Backend** | Device token style auth, `/transform`, rate limits, structured errors |
+| **Backend** | Device registration (`deviceId`), Bearer `deviceToken`, `transform` Edge Function; local + optional server usage caps |
 | **Compliance** | HTTPS, minimal logging, clear iOS Full Access disclosure |
 
 Out of scope for MVP: user-defined free-form prompts, offline on-device LLM, desktop keyboards. See [spec/overview.md](./spec/overview.md).
@@ -82,9 +83,9 @@ Out of scope for MVP: user-defined free-form prompts, offline on-device LLM, des
 
 | Day | Analysis |
 |-----|----------|
-| [Day 01](./day_01/analysis.md) | Repo, plan docs, NestJS scaffold, health |
-| [Day 02](./day_02/analysis.md) | Gemini client + prompt templates |
-| [Day 03](./day_03/analysis.md) | Transform API, auth stub, rate limit |
+| [Day 01](./day_01/analysis.md) | Repo, plan docs, Supabase scaffold, `devices` migration, Edge stub |
+| [Day 02](./day_02/analysis.md) | Gemini from Edge Function + shared prompt templates |
+| [Day 03](./day_03/analysis.md) | `register-device` + `transform`; Bearer; optional Postgres usage cap |
 | [Day 04](./day_04/analysis.md) | Android IME skeleton + QWERTY |
 | [Day 05](./day_05/analysis.md) | Android AI bar + API wiring |
 | [Day 06](./day_06/analysis.md) | Android modes, themes, long-press |
@@ -109,7 +110,7 @@ Out of scope for MVP: user-defined free-form prompts, offline on-device LLM, des
 
 ```
 trainee/projects/native_ai_keyboard/
-├── backend/           # NestJS — Days 01–03
+├── supabase/          # migrations + Edge Functions — Days 01–03
 ├── android-keyboard/  # Kotlin — Days 04–07
 └── ios-keyboard/      # Swift — Days 08–12
 ```

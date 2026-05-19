@@ -1,20 +1,28 @@
 # Native AI Keyboard — API Endpoints
 
-REST API contract. Example MVP base URL: `https://api.native-ai-keyboard.example/v1`
+HTTP contract for MVP. **Implementation:** Supabase **Edge Functions** (no NestJS). Base URL pattern:
+
+```text
+https://<PROJECT_REF>.supabase.co/functions/v1/<function-name>
+```
+
+Example: `https://abcdefghij.supabase.co/functions/v1/transform`
+
+> Paths below are **logical** names; map each to one Edge Function with the same name (or a single router function — document the chosen mapping in the repo `README`).
 
 ## Authentication
 
-MVP: Bearer auth using `device_token` returned after device registration.
+MVP: `Authorization: Bearer <device_token>` where `device_token` is returned from **register-device** and stored securely on the keyboard (Android Keystore / iOS Keychain optional later).
 
 ```
 Authorization: Bearer <device_token>
 ```
 
-## 1. Health
+## 1. Health (optional)
 
-| Method | Endpoint | Description |
+| Method | Logical path | Description |
 | :--- | :--- | :--- |
-| `GET` | `/health` | Service health check |
+| `GET` | `/health` or `functions/v1/health` | Liveness check |
 
 **Response 200:**
 
@@ -25,36 +33,45 @@ Authorization: Bearer <device_token>
 }
 ```
 
-## 2. Device Registration
+## 2. Device registration
 
-| Method | Endpoint | Description |
+| Method | Logical path | Description |
 | :--- | :--- | :--- |
-| `POST` | `/device/register` | Register a new device |
+| `POST` | `/device/register` → `functions/v1/register-device` | Register **deviceId** + platform; persist row for analytics |
 
 **Request:**
 
 ```json
 {
+  "deviceId": "550e8400-e29b-41d4-a716-446655440000",
   "platform": "android",
   "locale": "tr"
 }
 ```
 
+| Field | Type | Required |
+|-------|------|----------|
+| `deviceId` | string (UUID) | yes — stable id generated once on device |
+| `platform` | string | yes — `android` \| `ios` |
+| `locale` | string | no |
+
 **Response 201:**
 
 ```json
 {
-  "deviceId": "uuid",
-  "deviceToken": "secret-token",
+  "deviceId": "550e8400-e29b-41d4-a716-446655440000",
+  "deviceToken": "opaque-secret-token",
   "expiresAt": null
 }
 ```
 
+Server stores `device_id` + `platform` in **Supabase Postgres** `devices` table; returns opaque `deviceToken` for subsequent calls.
+
 ## 3. Transform (core)
 
-| Method | Endpoint | Description |
+| Method | Logical path | Description |
 | :--- | :--- | :--- |
-| `POST` | `/transform` | Transform text by mode and action via AI |
+| `POST` | `/transform` → `functions/v1/transform` | AI transform via Gemini (server-side only) |
 
 **Request:**
 
@@ -63,7 +80,8 @@ Authorization: Bearer <device_token>
   "text": "merhaba yarın toplantı var mısın müsait",
   "mode": "work",
   "action": "correct",
-  "locale": "tr"
+  "locale": "tr",
+  "theme": "light"
 }
 ```
 
@@ -73,6 +91,7 @@ Authorization: Bearer <device_token>
 | `mode` | string | yes | `work`, `friends`, `family`, `flirt` |
 | `action` | string | yes | `correct`, `rewrite`, `shorten`, `expand` |
 | `locale` | string | no | `tr`, `en` (default: `tr`) |
+| `theme` | string | no | `light`, `dark`, `system` — affects prompt tone hints |
 
 **Response 200:**
 
@@ -93,81 +112,27 @@ Authorization: Bearer <device_token>
 |------|------|-------------|
 | 400 | `INVALID_INPUT` | Missing or invalid field |
 | 401 | `UNAUTHORIZED` | Invalid token |
-| 429 | `RATE_LIMIT_EXCEEDED` | Quota exceeded |
+| 429 | `RATE_LIMIT_EXCEEDED` | Server soft cap (Postgres) or policy |
 | 502 | `AI_UNAVAILABLE` | Gemini error |
 | 504 | `AI_TIMEOUT` | Request timeout |
 
 ## 4. Modes & Actions (metadata)
 
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/modes` | List supported modes |
-| `GET` | `/actions` | List supported actions |
-
-**GET /modes — Response:**
-
-```json
-{
-  "modes": [
-    { "id": "work", "label": { "tr": "İş", "en": "Work" } },
-    { "id": "friends", "label": { "tr": "Arkadaş", "en": "Friends" } },
-    { "id": "family", "label": { "tr": "Aile", "en": "Family" } },
-    { "id": "flirt", "label": { "tr": "Flört", "en": "Flirt" } }
-  ]
-}
-```
-
-**GET /actions — Response:**
-
-```json
-{
-  "actions": [
-    { "id": "correct", "label": { "tr": "Düzelt", "en": "Correct" } },
-    { "id": "rewrite", "label": { "tr": "Yeniden yaz", "en": "Rewrite" } },
-    { "id": "shorten", "label": { "tr": "Kısalt", "en": "Shorten" } },
-    { "id": "expand", "label": { "tr": "Uzat", "en": "Expand" } }
-  ]
-}
-```
+Can be **static in app** (bundled JSON) for MVP, or served by a read-only Edge Function / storage bucket. No secret required.
 
 ## 5. Settings
 
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/settings` | Get device settings |
-| `PUT` | `/settings` | Update device settings |
+MVP options:
 
-**GET /settings — Response:**
+- **Device-only:** `GET/PUT` not on server; keyboard uses local prefs (already in plan).
+- **Server sync:** optional Edge Function `settings` reading/writing `device_settings` in Postgres — same Bearer token.
 
-```json
-{
-  "defaultMode": "work",
-  "theme": "system",
-  "locale": "tr"
-}
-```
+## 6. Prompt preview (development only)
 
-**PUT /settings — Request:**
+Edge Function `prompts-preview` behind auth; **disabled in production** (deploy flag or omit function).
 
-```json
-{
-  "defaultMode": "friends",
-  "theme": "dark",
-  "locale": "tr"
-}
-```
+## Rate limiting
 
-## 6. Prompt Preview (development only)
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/prompts/preview` | Preview system prompt for mode + action |
-
-**Query:** `?mode=work&action=correct&locale=tr`
-
-> Must be disabled in production.
-
-## Rate Limiting
-
-- Headers: `X-RateLimit-Remaining`, `X-RateLimit-Reset`
-- MVP recommendation: 50 requests / hour / `device_token`
+- **Client:** local debounce / min interval between transform calls (not bypass-proof).
+- **Server (recommended):** Edge Function checks optional `usage_daily` before Gemini; response headers optional: `X-RateLimit-Remaining`, `X-RateLimit-Reset`.
+- **No Redis** in MVP.

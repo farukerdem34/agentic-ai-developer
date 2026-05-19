@@ -2,16 +2,16 @@
 
 ## Objective
 
-Enable **Full Access** test path and integrate **`POST /v1/transform`** via `URLSession`: same JSON contract as Android. Loading/error UI parity with Day 05. Store bearer token in **Keychain** or `UserDefaults` (MVP).
+Enable **Full Access** test path and integrate **`POST .../functions/v1/transform`** (Supabase Edge) via `URLSession`: same JSON contract as Android. Loading/error UI parity with Day 05. Store bearer token in **Keychain** or `UserDefaults` (MVP).
 
 ## Architecture & Packages
 
-- **Networking:** async/await `URLSession`; codable DTOs matching backend.
+- **Networking:** async/await `URLSession`; codable DTOs matching Edge Function JSON.
 - **Security:** TLS only; pin optional post-MVP.
 
 ### Backend Endpoints
 
-- **Used:** `POST /v1/transform`, optionally `POST /v1/device/register`.
+- **Used:** `POST .../functions/v1/transform`, optionally `POST .../functions/v1/register-device`.
 
 ## Tasks
 

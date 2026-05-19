@@ -2,17 +2,17 @@
 
 ## Objective
 
-Wire the four **AI actions** to **`POST /v1/transform`**: show **loading** and **error** states (toast or inline), send `text`, `mode` (default Work), `action`, `locale`, optional `theme`. Insert successful `result` into field **or** hold for preview flow on Day 07 (choose one path; recommend stub preview buffer).
+Wire the four **AI actions** to **`POST .../functions/v1/transform`** (Supabase Edge): show **loading** and **error** states (toast or inline), send `text`, `mode` (default Work), `action`, `locale`, optional `theme`. Implement **local debounce** (min seconds between calls) in `SharedPreferences`. Insert successful `result` into field **or** hold for preview flow on Day 07.
 
 ## Architecture & Packages
 
-- **Networking:** Retrofit + OkHttp; base URL from `BuildConfig` or remote config placeholder.
-- **Auth:** Attach `Authorization: Bearer` from `SharedPreferences` after register (or dev token).
+- **Networking:** Retrofit + OkHttp; base URL = `https://<PROJECT_REF>.supabase.co/functions/v1/` from `BuildConfig`.
+- **Auth:** Attach `Authorization: Bearer` after `register-device` (Day 03).
 
 ### Backend Endpoints
 
-- **Used:** `POST /v1/transform` (required).
-- **Optional:** `POST /v1/device/register` if not done Day 03.
+- **Used:** `POST .../functions/v1/transform` (required).
+- **Optional:** `POST .../functions/v1/register-device` if not completed Day 03.
 
 ## Tasks
 
@@ -28,7 +28,7 @@ Wire the four **AI actions** to **`POST /v1/transform`**: show **loading** and *
 
 ## Checklist
 
-- [ ] Each action reaches backend and returns transformed text in happy path
+- [ ] Each action reaches **Supabase Edge** and returns transformed text in happy path
 - [ ] Loading indicator visible during request
 - [ ] Errors surfaced without crashing IME
 - [ ] Empty text disables actions or shows hint
