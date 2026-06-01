@@ -10,10 +10,6 @@
 	<true/>
 	<key>AIKeyboardIssueReportBypassDailyLimit</key>
 	<true/>
-	<key>SupabaseProjectURL</key>
-	<string>https://burcugdzjxixafqcmrwt.supabase.co</string>
-	<key>SupabaseSkipEntitlementCheck</key>
-	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -50,6 +46,10 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>SupabaseProjectURL</key>
+	<string>https://burcugdzjxixafqcmrwt.supabase.co</string>
+	<key>SupabaseSkipEntitlementCheck</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

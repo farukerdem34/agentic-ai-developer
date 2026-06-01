@@ -1,6 +1,6 @@
 name: AIKeyboard
 options:
-  bundleIdPrefix: com.nativeaikeyboard
+  bundleIdPrefix: com.masterfabric.nativeaikeyboard
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -34,7 +34,7 @@ targets:
       Release: BaseDSYM.xcconfig
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.nativeaikeyboard.host
+        PRODUCT_BUNDLE_IDENTIFIER: com.masterfabric.nativeaikeyboard
         INFOPLIST_FILE: AIKeyboard/Info.plist
         DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
       configs:
@@ -89,7 +89,7 @@ targets:
       Release: BaseDSYM.xcconfig
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.nativeaikeyboard.host.keyboard
+        PRODUCT_BUNDLE_IDENTIFIER: com.masterfabric.nativeaikeyboard.keyboard
         INFOPLIST_FILE: KeyboardExtension/Info.plist
         DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
       configs:
