@@ -137,7 +137,7 @@ final class AppGroupStore {
         return now.timeIntervalSince1970 < exp - 60
     }
 
-    /// Seconds since 1970; set after a successful Firestore issue report.
+    /// Seconds since 1970; set after a successful Supabase issue report (host `FeedbackReporter`).
     var issueReportLastSubmittedAt: TimeInterval {
         get { defaults?.double(forKey: Keys.issueReportLastSubmittedAt) ?? 0 }
         set {

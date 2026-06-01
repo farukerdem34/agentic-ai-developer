@@ -1,3 +1,8 @@
+/**
+ * Issue reports from the iOS host app.
+ * Auth: Bearer device token (same as `transform`). Inserts into `issue_reports` via service role.
+ * Optional Resend email after insert; HTTP 201 even when mail fails.
+ */
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
@@ -163,6 +168,7 @@ Deno.serve(async (req) => {
   }
   const supabase = createClient(url, key);
 
+  // Dev-only secret; omit in production (see `docs/OPEN_ISSUES.md` and ios-keyboard README).
   const bypassUtcRate = (Deno.env.get("ISSUE_REPORT_BYPASS_UTC_RATE_LIMIT") ?? "").trim().toLowerCase() === "true";
 
   const dayStart = utcDayStartIso();
@@ -197,6 +203,7 @@ Deno.serve(async (req) => {
     return json({ error: { code: "SERVER_ERROR", message: insErr.message } }, 500);
   }
 
+  // Best-effort notification; row is already persisted above.
   const mail = await sendOwnerEmail({
     deviceId,
     body: reportBody,

@@ -113,7 +113,9 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Report a problem (same module as ContentView so the target always compiles without Xcode file-list drift)
+// MARK: - Report a problem
+// Co-located with ContentView so XcodeGen does not drop a separate file from the host target.
+// Shows a locked card when the local daily cap is hit (avoids a disabled TextField that blocks the keyboard).
 
 private struct ReportProblemSheet: View {
     @Environment(\.dismiss) private var dismiss
@@ -139,6 +141,7 @@ private struct ReportProblemSheet: View {
                     .listRowBackground(Color.orange.opacity(0.2))
                 }
 
+                // `isIssueReportBlockedByLocalDay` ignores plist bypass so devs still see the locked UI when testing bypass off.
                 let calendarBlocked = AppGroupStore.shared.isIssueReportBlockedByLocalDay()
                 let devBypass = AppConfig.issueReportBypassDailyLimitForTesting
                 let showLockedCard = calendarBlocked && !devBypass
@@ -224,6 +227,7 @@ private struct ReportProblemSheet: View {
             }
             .onAppear {
                 guard FeedbackReporter.canSubmitToday() else { return }
+                // Delay focus until the sheet detent animation finishes (keyboard reliability).
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
                     reportFieldFocused = true
                 }

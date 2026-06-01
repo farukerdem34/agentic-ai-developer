@@ -1,5 +1,6 @@
--- Issue reports from the iOS host app (Edge Function `submit-issue-report` inserts via service role).
--- Clients do not write directly; RLS blocks anon/authenticated inserts from PostgREST if exposed.
+-- Issue reports from the iOS host app.
+-- Edge `submit-issue-report` inserts via service role; host never writes this table directly.
+-- RLS enabled with no policies: anon/authenticated PostgREST cannot insert if the table is exposed.
 
 create table if not exists public.issue_reports (
   id uuid primary key default gen_random_uuid(),

@@ -1,6 +1,9 @@
 import Foundation
 import UIKit
 
+// MARK: - Issue report copy (TR / EN)
+// Host sheet strings; picks Turkish when `Locale` language is `tr`. User-facing errors stay generic (no raw API JSON).
+
 enum IssueReportL10n {
     private static var useTurkish: Bool {
         let id = Locale.current.language.languageCode?.identifier ?? ""
@@ -189,6 +192,7 @@ enum FeedbackReporter {
         let message: String?
     }
 
+    /// Maps Supabase gateway 404 / NOT_FOUND bodies to a single user-facing “endpoint missing” error.
     private static func responseLooksLikeMissingFunction(status: Int, data: Data) -> Bool {
         if status == 404 { return true }
         let flat = try? JSONDecoder().decode(FlatGatewayError.self, from: data)
@@ -235,10 +239,12 @@ enum FeedbackReporter {
         return false
     }
 
+    /// Local calendar-day gate (App Group). Server also enforces one report per device per UTC day.
     static func canSubmitToday() -> Bool {
         AppGroupStore.shared.canSubmitIssueReportToday()
     }
 
+    /// POST `submit-issue-report` with Bearer `deviceTransformToken` from `register-device`.
     static func submitReport(body: String) async throws {
         let trim = body.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trim.count >= 10 else { throw SubmitError.tooShort }
@@ -288,6 +294,7 @@ enum FeedbackReporter {
         }
 
         if !(200 ... 299).contains(http.statusCode) {
+            // Classify common hosted misconfigurations before generic serverFailed (diagnostic → Crashlytics only).
             if Self.responseLooksLikeMissingFunction(status: http.statusCode, data: data) {
                 throw SubmitError.reportEndpointMissing
             }
@@ -307,6 +314,7 @@ enum FeedbackReporter {
 
         _ = try? JSONDecoder().decode(SubmitOk.self, from: data)
 
+        // Local daily UI lock; independent of server UTC rate limit.
         AppGroupStore.shared.issueReportLastSubmittedAt = Date().timeIntervalSince1970
     }
 }

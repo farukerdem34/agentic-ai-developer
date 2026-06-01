@@ -10,5 +10,6 @@ This directory holds **app code** and the **Supabase** project (migrations, Edge
 | [`.env.example`](./.env.example) | **All** env variable names (copy → `.env`, gitignored) |
 | [`examples/`](./examples/README.md) | Extra templates + `supabase functions serve` hints |
 | [`docs/OPEN_ISSUES.md`](./docs/OPEN_ISSUES.md) | Known open items (e.g. Resend delivery) |
+| [`docs/PR_ISSUE_REPORTS.md`](./docs/PR_ISSUE_REPORTS.md) | PR title + task-style description (copy into GitHub) |
 
 Do not commit real API keys or `GoogleService-Info.plist` (see `.gitignore`).
