@@ -1,11 +1,17 @@
 "onboarding.full_access.title" = "Allow Full Access for \"AI Keyboard\" Keyboards?";
-"onboarding.full_access.message" = "Full access allows the developer of this keyboard to transmit anything you type, including things you have previously typed with this keyboard. This could include sensitive information such as your credit card number or street address.\n\nApple only allows enabling this in Settings. Tap Allow to open Settings, select AI Keyboard, then turn on Allow Full Access. Open the keyboard once in Messages (globe icon) so this app can confirm it.";
+"onboarding.full_access.message" = "Full access allows the developer of this keyboard to transmit anything you type, including things you have previously typed with this keyboard. This could include sensitive information such as your credit card number or street address.\n\nTap Open App Settings below — this opens AI Keyboard’s own page in Settings (not the general device settings list). Enable Allow Full Access for the keyboard, then open the keyboard once in Messages so we can confirm.";
 "onboarding.full_access.allow" = "Allow";
-"onboarding.full_access.dont_allow" = "Don't Allow";
+"onboarding.full_access.open_app_settings" = "Open App Settings";
+"onboarding.full_access.steps_title" = "What to do";
+"onboarding.full_access.step_open_keyboard" = "After enabling Full Access, open the keyboard once in Messages (globe icon).";
+"onboarding.full_access.status_hint" = "Status updates automatically when the keyboard extension runs.";
 
 "settings.keyboard_setup.section" = "Keyboard setup";
 "settings.keyboard_setup.keyboard_detected_yes" = "Keyboard detected";
 "settings.keyboard_setup.keyboard_detected_no" = "Keyboard not opened yet";
+"settings.keyboard_setup.detected_yes" = "Yes";
+"settings.keyboard_setup.detected_no" = "No";
+"settings.keyboard_setup.full_access_label" = "Full access";
 "settings.keyboard_setup.full_access_on" = "Full access: on";
 "settings.keyboard_setup.full_access_off" = "Full access: off";
 "settings.keyboard_setup.full_access_unknown" = "Full access: unknown — open keyboard once";

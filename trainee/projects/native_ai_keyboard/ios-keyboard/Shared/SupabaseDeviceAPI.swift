@@ -25,17 +25,19 @@ enum SupabaseDeviceAPI {
     }
 
     static func registerForceRefresh() async throws {
-        guard let base = AppConfig.supabaseFunctionsBaseURL() else {
+        guard AppConfig.normalizedSupabaseProjectURLString() != nil else {
             throw RegisterError.missingSupabaseURL
         }
-        let url = base.appendingPathComponent("register-device")
+        guard let url = AppConfig.supabaseRegisterDeviceURL() else {
+            throw RegisterError.missingSupabaseURL
+        }
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.timeoutInterval = 60
 
-        let loc = AppGroupStore.shared.aiWritingLocaleIfSet
-            ?? KeyboardUIRegion.inferredFromPreferredLanguages().stringsLanguageCode
+        AIWritingLocale.syncFromDevice()
+        let loc = AIWritingLocale.preferredIdentifier()
         let body = RegisterBody(deviceId: DeviceId.idfv, platform: "ios", locale: loc)
         req.httpBody = try JSONEncoder().encode(body)
 

@@ -8,8 +8,12 @@ final class KeyboardShellView: UIView {
     private let keyplane = AppleKeyboardKeyplane()
 
     private var toolbarHeightConstraint: NSLayoutConstraint?
-    private var lastLayoutWidth: CGFloat = 0
+    private var lastLayoutSize: CGSize = .zero
     private var didBuildKeyplane = false
+
+    var isDisplayReady: Bool {
+        didBuildKeyplane && bounds.width > 1 && bounds.height > 80
+    }
 
     private var metrics: AppleKeyboardMetrics.Resolved {
         let w = bounds.width > 1 ? bounds.width : 390
@@ -18,8 +22,10 @@ final class KeyboardShellView: UIView {
     }
 
     private var isLandscapeLayout: Bool {
-        if bounds.width > 1, bounds.height > 1 {
-            return bounds.width > bounds.height
+        let w = bounds.width
+        let h = bounds.height
+        if w > 1, h > 80, h > 1 {
+            return w > h
         }
         return traitCollection.verticalSizeClass == .compact && traitCollection.userInterfaceIdiom == .phone
     }
@@ -57,6 +63,7 @@ final class KeyboardShellView: UIView {
         toolbarHeightConstraint?.constant = metrics.aiToolbarHeight
 
         applyAppearance(traits: controller.traitCollection)
+        finishDeferredBuildIfNeeded()
         KeyboardExtensionDiagnostics.logSync("KeyboardShellView init done")
     }
 
@@ -78,6 +85,13 @@ final class KeyboardShellView: UIView {
         super.didMoveToWindow()
         if window != nil {
             ai.startObserving()
+            AppGroupStore.shared.syncHostAppLanguageToKeyboard()
+            lastLayoutSize = .zero
+            if controller?.isKeyboardDisplaySettling != true {
+                controller?.reconcileKeyboardHeight(force: true)
+            }
+            refreshLayoutMetricsIfNeeded(force: true)
+            controller?.noteKeyboardShellLayoutPass()
         } else {
             ai.stopObserving()
         }
@@ -96,18 +110,28 @@ final class KeyboardShellView: UIView {
 
     func syncSystemKeyboardLayout(needsInputModeSwitchKey: Bool) {
         keyplane.updateInputModeSwitchKeyVisibility(needsInputModeSwitchKey)
-        lastLayoutWidth = 0
+        lastLayoutSize = .zero
         refreshLayoutMetricsIfNeeded(force: true)
     }
 
     func applyStableLayoutFit() {
-        lastLayoutWidth = 0
+        lastLayoutSize = .zero
+        controller?.reconcileKeyboardHeight(force: true)
         refreshLayoutMetricsIfNeeded(force: true)
     }
 
     func syncSettingsFromAppGroup() {
         ai.syncFromAppGroup()
         keyplane.refreshLocalizedTitles()
+        refreshAccentChrome()
+        refreshAIActionAvailability()
+    }
+
+    func refreshAIActionAvailability() {
+        ai.refreshActionAvailability()
+    }
+
+    func refreshAccentChrome() {
         keyplane.applyAppearance()
     }
 
@@ -135,16 +159,22 @@ final class KeyboardShellView: UIView {
     // MARK: - Layout
 
     private func refreshLayoutMetricsIfNeeded(force: Bool = false) {
-        let width = bounds.width
-        guard width > 1 else { return }
-        if !force, abs(width - lastLayoutWidth) < 0.5 { return }
-        lastLayoutWidth = width
+        let size = bounds.size
+        guard size.width > 1 else { return }
+        if !force,
+           abs(size.width - lastLayoutSize.width) < 0.5,
+           abs(size.height - lastLayoutSize.height) < 0.5
+        {
+            return
+        }
+        lastLayoutSize = size
 
         let m = metrics
         toolbarHeightConstraint?.constant = m.aiToolbarHeight
         ai.fitToolbar(height: m.aiToolbarHeight)
         keyplane.applyWidthMetrics()
-        controller?.syncKeyboardHeightToContent()
+        controller?.reconcileKeyboardHeight(force: force)
+        controller?.noteKeyboardShellLayoutPass()
     }
 }
 
@@ -196,11 +226,6 @@ extension KeyboardShellView: AppleKeyboardKeyplaneDelegate {
 extension KeyboardShellView: KeyboardChromeOptionsDelegate {
     func chromeOptionsLocalize(_ key: String) -> String {
         ai.localize(key)
-    }
-
-    func chromeOptionsDidChangeAppearance() {
-        controller?.applyKeyboardAppearancePreference()
-        syncSettingsFromAppGroup()
     }
 
     func chromeOptionsDidChangeAccent() {

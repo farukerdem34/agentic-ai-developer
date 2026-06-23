@@ -14,4 +14,9 @@ enum KeyboardHostChromePolicy {
     static func rootSurfaceColor(isDark: Bool) -> UIColor {
         usesLiquidGlassHostCard ? .clear : KeyboardShellView.surfaceColor(isDark: isDark)
     }
+
+    /// Opaque tray while the loading gate masks iOS 26 liquid-glass host siblings.
+    static func loadingMaskColor(isDark: Bool) -> UIColor {
+        KeyboardShellView.surfaceColor(isDark: isDark)
+    }
 }

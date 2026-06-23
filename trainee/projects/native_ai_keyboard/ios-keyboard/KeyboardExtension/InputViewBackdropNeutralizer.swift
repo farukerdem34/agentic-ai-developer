@@ -10,6 +10,27 @@ enum InputViewBackdropNeutralizer {
         }
     }
 
+    /// Loading gate: paint opaque tray and hide system glass/backdrop siblings (iOS 26 grey flash).
+    static func maskForLoading(
+        in inputView: UIView,
+        fillColor: UIColor,
+        overlay: UIView,
+        content: UIView
+    ) {
+        paintOpaque(inputView, fillColor: fillColor)
+        (inputView as? UIInputView)?.backgroundColor = fillColor
+
+        for subview in inputView.subviews where subview !== overlay && subview !== content {
+            if isSystemChromeSubview(subview) {
+                suppressSystemBackdropSubview(subview, fillColor: fillColor)
+            }
+        }
+
+        paintOpaque(overlay, fillColor: fillColor)
+        inputView.bringSubviewToFront(content)
+        inputView.bringSubviewToFront(overlay)
+    }
+
     // MARK: - iOS 26+ (UIInputSetHostView rounded card)
 
     private static func adaptForLiquidGlassHost(in inputView: UIView, content: UIView) {
@@ -50,12 +71,15 @@ enum InputViewBackdropNeutralizer {
         view.backgroundColor = fillColor
     }
 
-    private static func suppressSystemBackdropSubview(_ view: UIView, fillColor: UIColor) {
+    private static func isSystemChromeSubview(_ view: UIView) -> Bool {
         let typeName = String(describing: type(of: view))
-        let isBackdrop = view is UIVisualEffectView
+        return view is UIVisualEffectView
             || typeName.localizedCaseInsensitiveContains("backdrop")
+            || typeName.localizedCaseInsensitiveContains("inputset")
+    }
 
-        guard isBackdrop else { return }
+    private static func suppressSystemBackdropSubview(_ view: UIView, fillColor: UIColor) {
+        guard isSystemChromeSubview(view) else { return }
 
         view.isHidden = true
         view.alpha = 0

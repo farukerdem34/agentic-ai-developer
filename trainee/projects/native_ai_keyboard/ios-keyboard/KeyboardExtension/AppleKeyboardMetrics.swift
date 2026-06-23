@@ -22,9 +22,9 @@ enum AppleKeyboardMetrics {
         let keyShadowOpacity: Float
     }
 
-    /// AI action row (Improve / Shorten / Expand) — fixed height, not part of the key area.
+    /// AI action row — matches native accessory bar height.
     static func aiToolbarHeight(for width: CGFloat, isLandscape: Bool = false) -> CGFloat {
-        isLandscape ? 44 : 56
+        isLandscape ? 42 : 50
     }
 
     /// Stock iOS keyboard key area (QWERTY rows only, no custom toolbar).

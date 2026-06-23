@@ -14,21 +14,7 @@ enum RewriteAPIError: Error {
 }
 
 extension RewriteAPIError: LocalizedError {
-    var errorDescription: String? {
-        switch self {
-        case .noToken:
-            if AppConfig.usesSupabaseTransform {
-                return "Cihaz kaydı yok. Ana uygulamayı bir kez açın (Supabase register-device)."
-            }
-            return "Oturum yok. AI Keyboard uygulamasını açıp «Oturumu yenile» deyin."
-        case let .badStatus(code, body):
-            if code == 404 {
-                return "404: API adresi yanlış. Info.plist içinde SupabaseProjectURL veya AIKeyboardAPIBaseURL kontrol edin."
-            }
-            if let body, !body.isEmpty { return body }
-            return "Sunucu hatası (\(code))."
-        }
-    }
+    var errorDescription: String? { localizedMessage }
 }
 
 enum RewriteAPI {
@@ -45,47 +31,42 @@ enum RewriteAPI {
         if let env = try? JSONDecoder().decode(ErrorEnvelope.self, from: data), let e = env.error {
             switch e.code {
             case "gemini_not_configured":
-                return "Gemini anahtarı yok: Supabase Dashboard → Edge Secrets → GEMINI_API_KEY."
+                return KeyboardExtensionL10n.string("keyboard.error.gemini_not_configured")
             case "gemini_auth":
-                return "Gemini anahtarı reddedildi. GEMINI_API_KEY’i kontrol edin."
+                return KeyboardExtensionL10n.string("keyboard.error.gemini_auth")
             case "gemini_rate_limited":
-                return "Gemini hız sınırı. Bir süre sonra tekrar deneyin."
+                return KeyboardExtensionL10n.string("keyboard.error.gemini_rate_limited")
             case "gemini_quota":
-                return "Gemini kotası aşıldı."
+                return KeyboardExtensionL10n.string("keyboard.error.gemini_quota")
             case "gemini_model":
-                return "Gemini model adı geçersiz. GEMINI_MODEL secret’ını kontrol edin."
+                return KeyboardExtensionL10n.string("keyboard.error.gemini_model")
             case "gemini_bad_request", "gemini_upstream", "gemini_connection":
                 if let m = e.message, !m.isEmpty {
-                    return "Gemini: \(m)"
+                    return String(format: KeyboardExtensionL10n.string("keyboard.error.gemini_detail"), m)
                 }
-                return "Gemini isteği tamamlanamadı."
+                return KeyboardExtensionL10n.string("keyboard.error.gemini_failed")
             case "UNAUTHORIZED", "invalid_token":
-                return "Yetkisiz: cihaz token’ı geçersiz. Ana uygulamayı açıp tekrar deneyin."
+                return KeyboardExtensionL10n.string("keyboard.error.unauthorized")
             case "payment_required":
-                return "Abonelik gerekli."
+                return KeyboardExtensionL10n.string("keyboard.error.payment_required")
             default:
                 if let m = e.message, !m.isEmpty {
-                    return "Sunucu \(status): \(m)"
+                    return String(format: KeyboardExtensionL10n.string("keyboard.error.server_with_message"), status, m)
                 }
             }
         }
         if let raw = String(data: data, encoding: .utf8), !raw.isEmpty {
-            return "Sunucu \(status): \(raw)"
+            return String(format: KeyboardExtensionL10n.string("keyboard.error.server_with_message"), status, raw)
         }
-        return "Sunucu hatası (\(status))."
+        return String(format: KeyboardExtensionL10n.string("keyboard.error.server_status"), status)
     }
 
-    /// Maps `ConversationStyle` to plan `mode` (work / friends / family / flirt).
     private static func apiMode(for style: ConversationStyle) -> String {
         switch style {
-        case .formal, .work:
-            return "work"
-        case .friends:
-            return "friends"
-        case .family:
-            return "family"
-        case .flirt:
-            return "flirt"
+        case .formal, .work: return "work"
+        case .friends: return "friends"
+        case .family: return "family"
+        case .flirt: return "flirt"
         }
     }
 
@@ -104,25 +85,22 @@ enum RewriteAPI {
         style: ConversationStyle,
     ) async throws -> String {
         try await SupabaseDeviceAPI.registerIfNeeded()
-        guard let base = AppConfig.supabaseFunctionsBaseURL() else {
-            throw RewriteAPIError.badStatus(-1, "Supabase URL eksik")
+        guard let url = AppConfig.supabaseTransformURL() else {
+            throw RewriteAPIError.badStatus(-1, KeyboardExtensionL10n.string("keyboard.error.supabase_url_missing"))
         }
         guard let bearer = AppGroupStore.shared.deviceTransformToken, !bearer.isEmpty else {
             throw RewriteAPIError.noToken
         }
 
-        let url = base.appendingPathComponent("transform")
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.timeoutInterval = 180
 
-        let keyboardLocale =
-            AppGroupStore.shared.aiWritingLocaleIfSet
-            ?? KeyboardUIRegion.inferredFromPreferredLanguages().stringsLanguageCode
-        let deviceLocales = Locale.preferredLanguages.prefix(4).joined(separator: ", ")
-
+        AIWritingLocale.syncFromDevice()
+        let keyboardLocale = AIWritingLocale.preferredIdentifier()
+        let deviceLocales = AIWritingLocale.deviceLocalesHint()
         let themeRaw = AppGroupStore.shared.keyboardAppearancePreference.rawValue
 
         struct Body: Encodable {
@@ -136,7 +114,7 @@ enum RewriteAPI {
         }
 
         guard let action = mapAction(mode) else {
-            throw RewriteAPIError.badStatus(-1, "Desteklenmeyen mod")
+            throw RewriteAPIError.badStatus(-1, KeyboardExtensionL10n.string("keyboard.error.unsupported_mode"))
         }
 
         let body = Body(
@@ -149,6 +127,8 @@ enum RewriteAPI {
             deviceLocales: deviceLocales,
         )
         req.httpBody = try JSONEncoder().encode(body)
+
+        KeyboardExtensionDiagnostics.logSync("rewrite POST host=\(url.host ?? "?") locale=\(keyboardLocale)")
 
         let (data, resp) = try await URLSession.shared.data(for: req)
         guard let http = resp as? HTTPURLResponse else { throw RewriteAPIError.badStatus(-1, nil) }
@@ -181,7 +161,7 @@ enum RewriteAPI {
         if AppConfig.devSessionBypass {
             req.setValue(DeviceId.idfv, forHTTPHeaderField: "X-Device-Id")
         }
-        let langs = Locale.preferredLanguages.prefix(4).joined(separator: ", ")
+        let langs = AIWritingLocale.deviceLocalesHint()
         if !langs.isEmpty {
             req.setValue(langs, forHTTPHeaderField: "Accept-Language")
         }
@@ -209,34 +189,27 @@ enum RewriteAPI {
         return out.text
     }
 
-    /// True when neither App Group nor this process’s `Info.plist` has a non-empty `SupabaseProjectURL` (keyboard before first host launch, or misconfigured install).
-    private static func isSupabaseProjectURLUnsetInPlistAndAppGroup() -> Bool {
-        let group = AppGroupStore.shared.supabaseProjectURLStored?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if !group.isEmpty { return false }
-        let bundle = (Bundle.main.object(forInfoDictionaryKey: "SupabaseProjectURL") as? String ?? "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return bundle.isEmpty
-    }
-
     private static func mapConnectionError(_ error: Error) -> Error {
         let ns = error as NSError
         if ns.domain == NSURLErrorDomain || error is URLError {
+            let code = URLError.Code(rawValue: ns.code)
+            let host = AppConfig.supabaseTransformURL()?.host ?? AppConfig.normalizedSupabaseProjectURLString() ?? "?"
+            if code == .cannotFindHost || code == .dnsLookupFailed {
+                return RewriteAPIError.badStatus(
+                    -1,
+                    String(format: KeyboardExtensionL10n.string("keyboard.error.host_not_found_named"), host)
+                )
+            }
+            if AppConfig.normalizedSupabaseProjectURLString() == nil {
+                return RewriteAPIError.badStatus(-1, KeyboardExtensionL10n.string("keyboard.error.supabase_url_missing"))
+            }
             if AppConfig.usesSupabaseTransform {
                 return RewriteAPIError.badStatus(
                     -1,
-                    "Ağ hatası: Supabase’a ulaşılamadı. iOS Ayarlar → Klavye → AI Keyboard → Tam Erişim’i açın; ana uygulamada SupabaseProjectURL’i doldurup uygulamayı bir kez açıp «Oturumu ve cihazı yenile» deyin.",
+                    String(format: KeyboardExtensionL10n.string("keyboard.error.network_named"), host)
                 )
             }
-            if isSupabaseProjectURLUnsetInPlistAndAppGroup() {
-                return RewriteAPIError.badStatus(
-                    -1,
-                    "Supabase adresi yok: AIKeyboard/Info.plist içinde SupabaseProjectURL’i ayarlayın (https://…supabase.co, sonunda /functions/v1 olmasın), ana uygulamayı bir kez açıp «Oturumu ve cihazı yenile» deyin; klavyede Tam Erişim açık olsun.",
-                )
-            }
-            return RewriteAPIError.badStatus(
-                -1,
-                "Ağ hatası: API sunucusuna ulaşılamadı. AIKeyboardAPIBaseURL ve ağ erişimini kontrol edin.",
-            )
+            return RewriteAPIError.badStatus(-1, KeyboardExtensionL10n.string("keyboard.error.network_legacy"))
         }
         return error
     }
@@ -247,10 +220,12 @@ enum RewriteAPI {
                 return try await supabaseTransform(text: text, mode: mode, style: style)
             }
             return try await legacyNodeRewrite(text: text, mode: mode, style: style)
+        } catch let rewrite as RewriteAPIError {
+            NonFatalLog.record(rewrite, category: "rewrite_api")
+            throw rewrite
         } catch {
             NonFatalLog.record(error, category: "rewrite_api")
-            let mapped = mapConnectionError(error)
-            throw mapped
+            throw mapConnectionError(error)
         }
     }
 }

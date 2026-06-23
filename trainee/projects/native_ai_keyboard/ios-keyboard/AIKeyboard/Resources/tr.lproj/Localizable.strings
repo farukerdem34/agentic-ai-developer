@@ -1,11 +1,17 @@
 "onboarding.full_access.title" = "“AI Keyboard” Klavyeleri için Tam Erişime İzin Verilsin mi?";
-"onboarding.full_access.message" = "Tam erişim, bu klavyenin geliştiricisinin yazdıklarınızı — bu klavyeyle daha önce yazdıklarınız dahil — iletmesine izin verir. Bu, kredi kartı numaranız veya adresiniz gibi hassas bilgileri içerebilir.\n\nApple bunu yalnızca Ayarlar’dan açmanıza izin verir. İzin Ver’e dokunun, AI Keyboard’u seçin ve Tam Erişime İzin Ver’i açın. Durumun güncellenmesi için klavyeyi Mesajlar’da bir kez (dünya ikonu) açın.";
+"onboarding.full_access.message" = "Tam erişim, bu klavyenin geliştiricisinin yazdıklarınızı — bu klavyeyle daha önce yazdıklarınız dahil — iletmesine izin verir. Bu, kredi kartı numaranız veya adresiniz gibi hassas bilgileri içerebilir.\n\nAşağıdaki «Uygulama Ayarlarını Aç» düğmesi AI Klavye’nin kendi ayar sayfasını açar (genel cihaz ayarları değil). Klavye bölümünde Tam Erişime İzin Ver’i açın, ardından Mesajlar’da klavyeyi bir kez açın.";
 "onboarding.full_access.allow" = "İzin Ver";
-"onboarding.full_access.dont_allow" = "İzin Verme";
+"onboarding.full_access.open_app_settings" = "Uygulama Ayarlarını Aç";
+"onboarding.full_access.steps_title" = "Ne yapmalısınız?";
+"onboarding.full_access.step_open_keyboard" = "Tam Erişim’i açtıktan sonra klavyeyi Mesajlar’da bir kez açın (dünya ikonu).";
+"onboarding.full_access.status_hint" = "Durum, klavye eklentisi çalışınca otomatik güncellenir.";
 
 "settings.keyboard_setup.section" = "Klavye kurulumu";
 "settings.keyboard_setup.keyboard_detected_yes" = "Klavye algılandı";
 "settings.keyboard_setup.keyboard_detected_no" = "Klavye henüz açılmadı";
+"settings.keyboard_setup.detected_yes" = "Evet";
+"settings.keyboard_setup.detected_no" = "Hayır";
+"settings.keyboard_setup.full_access_label" = "Tam erişim";
 "settings.keyboard_setup.full_access_on" = "Tam erişim: açık";
 "settings.keyboard_setup.full_access_off" = "Tam erişim: kapalı";
 "settings.keyboard_setup.full_access_unknown" = "Tam erişim: bilinmiyor — klavyeyi bir kez açın";

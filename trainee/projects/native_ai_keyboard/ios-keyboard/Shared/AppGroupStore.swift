@@ -127,12 +127,9 @@ final class AppGroupStore {
         keyboardLastSeenAt > 0
     }
 
-    /// Host app shows a one-tap Settings prompt while Full Access is off.
-    /// iOS does not expose Settings state to the host — we only know after the keyboard extension runs and reports `hasFullAccess`.
+    /// Host app shows a blocking prompt while Full Access is off after the keyboard has run once.
     var shouldPromptForFullAccessInHostApp: Bool {
-        guard isSharedContainerAvailable else { return false }
-        guard keyboardHasBeenUsed else { return false }
-        return !keyboardReportsFullAccess
+        KeyboardSetupStatus.resolve(from: self).needsFullAccessGate
     }
 
     /// When set, `AppConfig.apiBaseURL` prefers this over Info.plist (shared with keyboard extension).
@@ -220,9 +217,9 @@ final class AppGroupStore {
         }
     }
 
-    /// `tr` / `en` / … for keyboard `.lproj` strings. Uses `Locale.current` plus **Language & Region**; any Turkish/German/French/Spanish in that list wins before English.
+    /// `tr` / `en` / … for keyboard `.lproj` strings — follows the device’s **primary** language (not “any Turkish in the list wins”).
     var keyboardChromeStringsLanguageCode: String {
-        KeyboardUIRegion.inferredFromPreferredLanguages().stringsLanguageCode
+        KeyboardLocalePolicy.uiStringsLanguageCode()
     }
 
     /// Removes legacy `keyboard_ui_region` from the App Group. Older app builds wrote a fixed region so changing iOS language did not update toolbar labels.
@@ -234,11 +231,18 @@ final class AppGroupStore {
 
     /// Host app calls on launch / foreground so the keyboard extension reloads localized chrome when iOS language changes.
     func syncHostAppLanguageToKeyboard() {
+        updateAIWritingLocaleFromDevice()
         let code = keyboardChromeStringsLanguageCode
         let previous = defaults?.string(forKey: Keys.chromeStringsLanguageStamp) ?? ""
         guard previous != code else { return }
         defaults?.set(code, forKey: Keys.chromeStringsLanguageStamp)
         publishSettingsChange()
+    }
+
+    func updateAIWritingLocaleFromDevice() {
+        let code = AIWritingLocale.preferredLanguageCode(store: self)
+        defaults?.set(code, forKey: Keys.aiWritingLocale)
+        defaults?.synchronize()
     }
 
     func isSessionValid(now: Date = .init()) -> Bool {
