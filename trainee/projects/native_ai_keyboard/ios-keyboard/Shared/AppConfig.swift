@@ -20,12 +20,40 @@ enum AppConfig {
     }
 
     static func supabaseFunctionsBaseURL() -> URL? {
-        let s = supabaseProjectURLString.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !s.isEmpty, var c = URLComponents(string: s) else { return nil }
+        guard let root = normalizedSupabaseProjectURLString() else { return nil }
+        guard var c = URLComponents(string: root) else { return nil }
         c.path = "/functions/v1"
         c.query = nil
         c.fragment = nil
         return c.url
+    }
+
+    static func supabaseTransformURL() -> URL? {
+        guard let root = normalizedSupabaseProjectURLString() else { return nil }
+        guard var c = URLComponents(string: root) else { return nil }
+        c.path = "/functions/v1/transform"
+        c.query = nil
+        c.fragment = nil
+        return c.url
+    }
+
+    static func supabaseRegisterDeviceURL() -> URL? {
+        guard let root = normalizedSupabaseProjectURLString() else { return nil }
+        guard var c = URLComponents(string: root) else { return nil }
+        c.path = "/functions/v1/register-device"
+        c.query = nil
+        c.fragment = nil
+        return c.url
+    }
+
+    /// Validates host plist / App Group Supabase root (`https://ref.supabase.co`, no `/functions/v1`).
+    static func normalizedSupabaseProjectURLString() -> String? {
+        var s = supabaseProjectURLString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !s.isEmpty else { return nil }
+        while s.hasSuffix("/") { s.removeLast() }
+        if !s.lowercased().hasPrefix("http") { s = "https://" + s }
+        guard let url = URL(string: s), let host = url.host, !host.isEmpty, host.contains(".") else { return nil }
+        return s
     }
 
     private static func string(_ key: String) -> String {

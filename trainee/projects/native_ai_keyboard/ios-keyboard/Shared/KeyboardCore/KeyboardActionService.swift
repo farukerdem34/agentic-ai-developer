@@ -13,6 +13,18 @@ struct KeyboardActionService {
     }
 
     func rewriteContext() -> (text: String, snapshot: RewriteSnapshot) {
+        if let input = proxy as? UITextInput,
+           let selected = input.selectedTextRange,
+           input.offset(from: selected.start, to: selected.end) > 0,
+           let selectedText = input.text(in: selected),
+           !selectedText.isEmpty
+        {
+            return (
+                selectedText,
+                RewriteSnapshot(usesSelection: true, utf16Before: 0, utf16After: 0, replaceWholeDocumentPreferred: false)
+            )
+        }
+
         if let sel = proxy.selectedText, !sel.isEmpty {
             return (
                 sel,
@@ -58,6 +70,22 @@ struct KeyboardActionService {
             split,
             RewriteSnapshot(usesSelection: false, utf16Before: uBefore, utf16After: uAfter, replaceWholeDocumentPreferred: false)
         )
+    }
+
+    /// Best available text at button press — keyboard taps often clear selection before async work runs.
+    static func mergeRewriteContexts(
+        touchDown: (text: String, snapshot: RewriteSnapshot)?,
+        live: (text: String, snapshot: RewriteSnapshot)
+    ) -> (text: String, snapshot: RewriteSnapshot) {
+        let touchTrim = touchDown?.text.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let liveTrim = live.0.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !touchTrim.isEmpty, let td = touchDown {
+            if liveTrim.count > touchTrim.count { return live }
+            return (td.text, td.snapshot)
+        }
+        if !liveTrim.isEmpty { return live }
+        if let td = touchDown, !touchTrim.isEmpty { return (td.text, td.snapshot) }
+        return live
     }
 
     func applyRewrite(result: String, snapshot: RewriteSnapshot) {
