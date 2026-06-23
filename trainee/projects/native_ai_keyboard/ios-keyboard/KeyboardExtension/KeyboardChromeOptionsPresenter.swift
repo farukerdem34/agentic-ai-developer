@@ -2,7 +2,6 @@ import UIKit
 
 protocol KeyboardChromeOptionsDelegate: AnyObject {
     func chromeOptionsLocalize(_ key: String) -> String
-    func chromeOptionsDidChangeAppearance()
     func chromeOptionsDidChangeAccent()
     func chromeOptionsIsDark() -> Bool
 }
@@ -12,18 +11,15 @@ private final class PassthroughOverlay: UIView {
     weak var dismissCard: UIView?
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        guard !isHidden, alpha > 0.01 else { return nil }
-        guard bounds.contains(point) else { return nil }
+        guard !isHidden, alpha > 0.01, bounds.contains(point) else { return nil }
         if let card = dismissCard {
             let cardPoint = convert(point, to: card)
             if card.bounds.contains(cardPoint) {
-                return super.hitTest(point, with: event)
+                return card.hitTest(cardPoint, with: event) ?? card
             }
             return self
         }
-        let hit = super.hitTest(point, with: event)
-        if hit === self { return nil }
-        return hit
+        return super.hitTest(point, with: event)
     }
 }
 
@@ -36,7 +32,6 @@ final class KeyboardChromeOptionsPresenter {
     private let overlay = PassthroughOverlay()
     private let card = UIStackView()
     private let titleLabel = UILabel()
-    private let appearanceRow = UIStackView()
     private let accentRow = UIStackView()
     private var isVisible = false
 
@@ -53,6 +48,7 @@ final class KeyboardChromeOptionsPresenter {
         overlay.isHidden = true
         overlay.alpha = 0
         overlay.isUserInteractionEnabled = true
+        overlay.layer.zPosition = 1000
         overlay.backgroundColor = .clear
         layoutView.addSubview(overlay)
 
@@ -72,13 +68,8 @@ final class KeyboardChromeOptionsPresenter {
         overlay.dismissCard = card
 
         let outsideTap = UITapGestureRecognizer(target: self, action: #selector(overlayTapped(_:)))
-        outsideTap.cancelsTouchesInView = false
+        outsideTap.cancelsTouchesInView = true
         overlay.addGestureRecognizer(outsideTap)
-
-        appearanceRow.axis = .horizontal
-        appearanceRow.spacing = 10
-        appearanceRow.alignment = .center
-        appearanceRow.distribution = .fillEqually
 
         accentRow.axis = .horizontal
         accentRow.spacing = 8
@@ -90,7 +81,6 @@ final class KeyboardChromeOptionsPresenter {
         titleLabel.numberOfLines = 1
 
         card.addArrangedSubview(titleLabel)
-        card.addArrangedSubview(appearanceRow)
         card.addArrangedSubview(accentRow)
 
         NSLayoutConstraint.activate([
@@ -126,13 +116,15 @@ final class KeyboardChromeOptionsPresenter {
             self.overlay.alpha = 0
         }, completion: { _ in
             self.overlay.isHidden = true
+            self.overlay.backgroundColor = .clear
         })
     }
 
     @objc private func overlayTapped(_ gesture: UITapGestureRecognizer) {
         guard isVisible else { return }
-        let cardPoint = gesture.location(in: card)
-        if !card.bounds.contains(cardPoint) {
+        let point = gesture.location(in: overlay)
+        let cardFrame = card.convert(card.bounds, to: overlay)
+        if !cardFrame.contains(point) {
             hide()
         }
     }
@@ -150,6 +142,7 @@ final class KeyboardChromeOptionsPresenter {
         card.backgroundColor = palette.chromeCard
         titleLabel.textColor = palette.primaryText
         titleLabel.text = delegate?.chromeOptionsLocalize("keyboard.chrome_menu_title")
+        overlay.backgroundColor = .clear
     }
 
     private func show() {
@@ -176,32 +169,9 @@ final class KeyboardChromeOptionsPresenter {
     private func rebuildContent() {
         titleLabel.text = delegate?.chromeOptionsLocalize("keyboard.chrome_menu_title")
 
-        appearanceRow.arrangedSubviews.forEach {
-            appearanceRow.removeArrangedSubview($0)
-            $0.removeFromSuperview()
-        }
         accentRow.arrangedSubviews.forEach {
             accentRow.removeArrangedSubview($0)
             $0.removeFromSuperview()
-        }
-
-        let currentAppearance = AppGroupStore.shared.keyboardAppearancePreference
-        let appearanceIcons: [(KeyboardAppearancePreference, String)] = [
-            (.system, "circle.lefthalf.filled"),
-            (.light, "sun.max.fill"),
-            (.dark, "moon.fill"),
-        ]
-        for (pref, symbol) in appearanceIcons {
-            let btn = iconOptionButton(
-                systemName: symbol,
-                selected: pref == currentAppearance,
-                accessibilityKey: pref.localizationKey
-            )
-            btn.addAction(UIAction { [weak self] _ in
-                AppGroupStore.shared.keyboardAppearancePreference = pref
-                self?.delegate?.chromeOptionsDidChangeAppearance()
-            }, for: .touchUpInside)
-            appearanceRow.addArrangedSubview(btn)
         }
 
         let currentAccent = AppGroupStore.shared.keyboardChromeAccent
@@ -213,23 +183,6 @@ final class KeyboardChromeOptionsPresenter {
             }, for: .touchUpInside)
             accentRow.addArrangedSubview(btn)
         }
-    }
-
-    private func iconOptionButton(systemName: String, selected: Bool, accessibilityKey: String) -> UIButton {
-        var cfg = UIButton.Configuration.plain()
-        cfg.image = symbolImage(systemName: systemName, pointSize: 20, weight: .medium, fallbackLetter: "T")
-        cfg.baseForegroundColor = .label
-        cfg.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
-        let b = UIButton(configuration: cfg)
-        b.accessibilityLabel = delegate?.chromeOptionsLocalize(accessibilityKey)
-        b.isExclusiveTouch = true
-        b.layer.cornerRadius = 10
-        b.clipsToBounds = true
-        b.backgroundColor = selected ? UIColor.label.withAlphaComponent(0.12) : .clear
-        b.layer.borderWidth = selected ? 2 : 0
-        b.layer.borderColor = UIColor.label.withAlphaComponent(0.35).cgColor
-        b.heightAnchor.constraint(equalToConstant: 40).isActive = true
-        return b
     }
 
     private func accentOptionButton(accent: KeyboardChromeAccent, selected: Bool) -> UIButton {
@@ -259,22 +212,5 @@ final class KeyboardChromeOptionsPresenter {
             b.layer.cornerRadius = 18
         }
         return b
-    }
-
-    private func symbolImage(systemName: String, pointSize: CGFloat, weight: UIImage.SymbolWeight, fallbackLetter: String) -> UIImage {
-        let symCfg = UIImage.SymbolConfiguration(pointSize: pointSize, weight: weight)
-        if let img = UIImage(systemName: systemName, withConfiguration: symCfg) {
-            return img.withRenderingMode(.alwaysTemplate)
-        }
-        let s = CGSize(width: max(22, pointSize + 8), height: max(22, pointSize + 8))
-        return UIGraphicsImageRenderer(size: s).image { _ in
-            let attrs: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: pointSize * 0.72, weight: .semibold),
-                .foregroundColor: UIColor.black,
-            ]
-            let str = fallbackLetter as NSString
-            let ts = str.size(withAttributes: attrs)
-            str.draw(at: CGPoint(x: (s.width - ts.width) / 2, y: (s.height - ts.height) / 2), withAttributes: attrs)
-        }.withRenderingMode(.alwaysTemplate)
     }
 }

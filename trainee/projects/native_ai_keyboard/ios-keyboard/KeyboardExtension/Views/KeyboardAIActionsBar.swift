@@ -13,9 +13,9 @@ final class KeyboardAIActionsBar: UIView {
 
         addLayoutGuide(contentGuide)
         NSLayoutConstraint.activate([
-            contentGuide.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            contentGuide.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-            contentGuide.topAnchor.constraint(equalTo: topAnchor, constant: 1),
+            contentGuide.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
+            contentGuide.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
+            contentGuide.topAnchor.constraint(equalTo: topAnchor, constant: 2),
             contentGuide.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -2),
         ])
 
@@ -28,7 +28,7 @@ final class KeyboardAIActionsBar: UIView {
         addSubview(topRow)
 
         actionsRow.axis = .horizontal
-        actionsRow.spacing = 0
+        actionsRow.spacing = 6
         actionsRow.alignment = .center
         actionsRow.distribution = .fillEqually
 
@@ -54,7 +54,7 @@ final class KeyboardAIActionsBar: UIView {
             topRow.leadingAnchor.constraint(equalTo: contentGuide.leadingAnchor),
             topRow.trailingAnchor.constraint(equalTo: contentGuide.trailingAnchor),
             topRow.topAnchor.constraint(equalTo: contentGuide.topAnchor),
-            topRow.bottomAnchor.constraint(equalTo: bottomHairline.topAnchor, constant: -2),
+            topRow.bottomAnchor.constraint(equalTo: bottomHairline.topAnchor, constant: -1),
             bottomHairline.leadingAnchor.constraint(equalTo: leadingAnchor),
             bottomHairline.trailingAnchor.constraint(equalTo: trailingAnchor),
             bottomHairline.bottomAnchor.constraint(equalTo: bottomAnchor),
