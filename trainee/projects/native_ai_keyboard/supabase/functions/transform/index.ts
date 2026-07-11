@@ -40,7 +40,11 @@ async function verifyDeviceToken(
   return { ok: true, deviceId: data.device_id };
 }
 
-async function callGemini(systemInstruction: string, userText: string): Promise<string> {
+async function callGemini(
+  systemInstruction: string,
+  userText: string,
+  temperature: number,
+): Promise<string> {
   const apiKey = Deno.env.get("GEMINI_API_KEY")?.trim();
   if (!apiKey) {
     throw Object.assign(new Error("GEMINI_API_KEY missing"), { code: "gemini_not_configured" });
@@ -55,7 +59,7 @@ async function callGemini(systemInstruction: string, userText: string): Promise<
     systemInstruction: { parts: [{ text: systemInstruction }] },
     contents: [{ role: "user", parts: [{ text: userText }] }],
     generationConfig: {
-      temperature: 0.34,
+      temperature,
       maxOutputTokens: 8192,
     },
   };
@@ -118,12 +122,16 @@ Deno.serve(async (req) => {
     const theme = typeof body?.theme === "string" ? body.theme : "system";
     const style = typeof body?.style === "string" ? body.style : "formal";
     const deviceLocales = typeof body?.deviceLocales === "string" ? body.deviceLocales : "";
+    const previousOutput = typeof body?.previousOutput === "string" ? body.previousOutput : "";
 
     if (!text.trim()) {
       return json({ error: { code: "INVALID_INPUT", message: "text required" } }, 400);
     }
     if (text.length > 4000) {
       return json({ error: { code: "INVALID_INPUT", message: "text too long" } }, 400);
+    }
+    if (previousOutput.length > 4000) {
+      return json({ error: { code: "INVALID_INPUT", message: "previousOutput too long" } }, 400);
     }
     if (!allowedActions.has(action)) {
       return json({
@@ -135,9 +143,10 @@ Deno.serve(async (req) => {
     }
 
     const system = buildSystemPromptForAction(action, style);
-    const userBlock = wrapUserText(text, deviceLocales, locale);
+    const userBlock = wrapUserText(text, deviceLocales, locale, previousOutput.trim() || null);
+    const temperature = previousOutput.trim() ? 0.7 : 0.34;
 
-    const result = await callGemini(system, userBlock);
+    const result = await callGemini(system, userBlock, temperature);
     const latencyMs = Math.round(performance.now() - t0);
 
     return json({

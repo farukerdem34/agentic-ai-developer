@@ -2,9 +2,10 @@
 
 const languageCultureRule = [
   "Language and culture:",
-  "- Detect the user's message language. Output MUST be in that same language.",
+  "- Detect the DOMINANT language of the user's message from the text itself.",
+  "- Output MUST be 100% in that same language — do not translate to another language.",
+  "- If the message mixes languages, keep the dominant language and preserve intentional foreign words/names.",
   "- Follow that language's real spelling, punctuation, spacing, and quotation conventions.",
-  "- Do not translate the message into another language unless the user clearly mixed languages on purpose.",
 ].join("\n");
 
 const punctuationRule =
@@ -43,32 +44,33 @@ const semanticExpand = [
 
 const styles: Record<string, string> = {
   formal: [
-    "Persona — FORMAL:",
+    "Persona — FORMAL (apply this tone in EVERY mode):",
     "Respectful, clear, well structured; not robotic or bureaucratic.",
     "Turkish: resmi ama günlük mesajı mektup formatına çevirme.",
     "English: polished neutral register; no slang.",
     "Do not mix work slang, buddy slang, family intimacy, or romance.",
   ].join("\n"),
   work: [
-    "Persona — WORK:",
+    "Persona — WORK (apply this tone in EVERY mode):",
     "Clear workplace communication: competent asks, updates, deadlines.",
     "Turkish: net iş mesajı; her mesajı resmi dile zorlama.",
     "English: direct respectful business English.",
   ].join("\n"),
   friends: [
-    "Persona — FRIENDS:",
+    "Persona — FRIENDS (apply this tone in EVERY mode):",
     "Warm, natural peer tone; keep closeness similar to the draft.",
     "Avoid corporate stiffness; avoid family-only intimacy or flirting.",
   ].join("\n"),
   family: [
-    "Persona — FAMILY:",
+    "Persona — FAMILY (apply this tone in EVERY mode):",
     "Warm, caring, plain language suitable for relatives.",
     "Do not sound corporate; do not flirt.",
   ].join("\n"),
   flirt: [
-    "Persona — FLIRT:",
-    "Playful, charming, consent-aware; never crude or coercive.",
-    "If the draft is not romantic, keep tone only lightly warmer — do not invent romance.",
+    "Persona — FLIRT (apply this tone in EVERY mode):",
+    "Slightly more romantic and charming than a neutral rewrite — warm, playful, consent-aware.",
+    "Add light affection or flirtation that fits the draft; never crude, coercive, or over-the-top.",
+    "If the draft is clearly non-romantic (work/urgent), keep tone only lightly warmer — do not invent heavy romance.",
   ].join("\n"),
 };
 
@@ -86,12 +88,27 @@ function personaBlock(styleKey: string): string {
   return styles[sk];
 }
 
+/** Anti-drift variant instructions when regenerating the same source. */
+export function buildRegenerateAddendum(previousOutput: string): string {
+  const clipped = previousOutput.length > 3500 ? previousOutput.slice(0, 3500) + "…" : previousOutput;
+  return [
+    "REGENERATE / VARIANT (critical):",
+    "- You previously produced the following output for the SAME source text and SAME mode:",
+    "<<<PREVIOUS_OUTPUT>>>",
+    clipped,
+    "<<<END_PREVIOUS_OUTPUT>>>",
+    "- Produce a DIFFERENT wording with the SAME meaning — do not repeat the previous output verbatim.",
+    "- Length target follows the ORIGINAL draft and the current MODE — do NOT further shorten or expand relative to the previous output (no cumulative drift).",
+    "- Keep names, numbers, dates, stance, and intent identical.",
+  ].join("\n");
+}
+
 export function buildRewriteSystemPrompt(styleKey: string): string {
   return [
-    "MODE: REWRITE — rewrite the user's text naturally (same meaning, neater writing, preserve tone).",
+    "MODE: REWRITE — rewrite the user's text naturally (same meaning, neater writing).",
     "",
     "Goals:",
-    "- Preserve original meaning and casual (or formal) register as in the draft.",
+    "- Preserve original meaning; apply the persona tone below.",
     "- Fix grammar and spelling; smooth awkward phrasing.",
     "- Keep emojis that belong to the message.",
     "",
@@ -115,7 +132,7 @@ export function buildImproveSystemPrompt(styleKey: string): string {
     "MODE: IMPROVE — improve the user's writing quality (clearer, more polished, more fluent).",
     "",
     "Goals:",
-    "- Make the message clearer and smoother; slightly more professional if it fits the draft.",
+    "- Make the message clearer and smoother while applying the persona tone below.",
     "- Fix grammar and spelling; reduce redundancy without emptying the message.",
     "- Do not overcomplicate vocabulary or sentence length.",
     "",
@@ -136,6 +153,7 @@ export function buildShortenSystemPrompt(styleKey: string): string {
     "Goals:",
     "- Remove fluff and repetition while keeping the message natural.",
     "- Prefer one clear sentence over several vague ones when possible.",
+    "- Apply the persona tone below without adding length.",
     "",
     languageCultureRule,
     "",
@@ -181,7 +199,12 @@ export function buildSystemPromptForAction(action: string, styleKey: string): st
   }
 }
 
-export function wrapUserText(text: string, localeHint: string, keyboardLocale: string): string {
+export function wrapUserText(
+  text: string,
+  localeHint: string,
+  keyboardLocale: string,
+  previousOutput?: string | null,
+): string {
   const lines: string[] = [];
   lines.push(`Primary writing locale (keyboard / user setting): ${keyboardLocale}.`);
   if (localeHint) {
@@ -189,8 +212,12 @@ export function wrapUserText(text: string, localeHint: string, keyboardLocale: s
     lines.push("Prefer regional spelling when consistent with the user's text.");
     lines.push("");
   }
+  if (previousOutput && previousOutput.trim()) {
+    lines.push(buildRegenerateAddendum(previousOutput.trim()));
+    lines.push("");
+  }
   lines.push(
-    "The following is the user's message. Reply with ONLY the processed text in the SAME language as the user.",
+    "The following is the user's message (source). Reply with ONLY the processed text in the SAME language as the user.",
     "Apply spelling, grammar, and style rules native to that language.",
     "Do not add labels like 'User:' or 'Assistant:'.",
     "",
