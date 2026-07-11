@@ -12,6 +12,10 @@
 "keyboard.result_preview_title" = "Suggested text";
 "keyboard.apply_result" = "Confirm";
 "keyboard.discard_result" = "Cancel";
+"keyboard.close_preview" = "Close";
+"keyboard.copy_result" = "Copy";
+"keyboard.regenerate_result" = "Rewrite again";
+"keyboard.copied" = "Copied.";
 "keyboard.preview_ready" = "Review below, then tap Confirm.";
 "keyboard.ai_button_accessibility" = "Rewrite with AI";
 "keyboard.action_grammar" = "Grammar";
@@ -47,6 +51,7 @@
 "keyboard.working_rewrite" = "Rewriting…";
 "keyboard.working_shorten" = "Shortening…";
 "keyboard.working_expand" = "Expanding…";
+"keyboard.working_regenerate" = "Generating a new suggestion…";
 "keyboard.numbers_placeholder" = "Numbers layout (MVP)";
 "keyboard.empty_text" = "Type or select text first.";
 "keyboard.open_host" = "Open AI Keyboard app once to refresh session.";

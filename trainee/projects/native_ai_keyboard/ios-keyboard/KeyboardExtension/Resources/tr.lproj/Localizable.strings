@@ -12,6 +12,10 @@
 "keyboard.result_preview_title" = "Önerilen metin";
 "keyboard.apply_result" = "Onayla";
 "keyboard.discard_result" = "İptal";
+"keyboard.close_preview" = "Kapat";
+"keyboard.copy_result" = "Kopyala";
+"keyboard.regenerate_result" = "Yeniden yaz";
+"keyboard.copied" = "Kopyalandı.";
 "keyboard.preview_ready" = "Aşağıdan kontrol edin, ardından Onayla’ya dokunun.";
 "keyboard.ai_button_accessibility" = "Yapay zekâ ile yeniden yaz";
 "keyboard.action_grammar" = "Dilbilgisi";
@@ -47,6 +51,7 @@
 "keyboard.working_rewrite" = "Metin yeniden yazılıyor…";
 "keyboard.working_shorten" = "Kısaltılıyor…";
 "keyboard.working_expand" = "Genişletiliyor…";
+"keyboard.working_regenerate" = "Yeni öneri hazırlanıyor…";
 "keyboard.numbers_placeholder" = "Sayılar (MVP)";
 "keyboard.empty_text" = "Önce yazın veya metin seçin.";
 "keyboard.open_host" = "Oturum için AI Klavye uygulamasını bir kez açın.";
