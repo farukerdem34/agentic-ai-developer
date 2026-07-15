@@ -15,6 +15,9 @@ Each path is designed as a series of daily tasks to guide you from foundational 
 *   **Backend Development with Go:** Learn idiomatic Go—from language fundamentals and concurrency to production APIs, data, observability, and deployment.
     *   **Roadmap:** [`/days/go/go_roadmap.md`](../days/go/go_roadmap.md)
 
+*   **TypeScript Mastery:** Build deep TypeScript skill—from core types and generics to advanced type-level programming, validation boundaries, tooling, and library design.
+    *   **Roadmap:** [`/days/typescript/typescript_roadmap.md`](../days/typescript/typescript_roadmap.md)
+
 *   **AI Agent Development:** Dive into the exciting world of AI and learn to build autonomous agents.
     *   **Roadmap:** [`/days/ai-agents/ai-agents_roadmap.md`](../days/ai-agents/ai-agents_roadmap.md)
 

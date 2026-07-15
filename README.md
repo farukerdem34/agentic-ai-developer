@@ -20,6 +20,7 @@ Quick overview of the available tracks. Open a roadmap for the full curriculum a
 | NestJS | 100 days | ![Node.js](https://img.shields.io/badge/Node.js-339933?logo=nodedotjs&logoColor=white) ![NestJS](https://img.shields.io/badge/NestJS-E0234E?logo=nestjs&logoColor=white) | [`/days/nestjs/nestjs_roadmap.md`](./days/nestjs/nestjs_roadmap.md) |
 | Next.js | 100 days | ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white) ![Next.js](https://img.shields.io/badge/Next.js-000000?logo=nextdotjs&logoColor=white) | [`/days/nextjs/nextjs_roadmap.md`](./days/nextjs/nextjs_roadmap.md) |
 | Go | 100 days | ![Go](https://img.shields.io/badge/Go-00ADD8?logo=go&logoColor=white) | [`/days/go/go_roadmap.md`](./days/go/go_roadmap.md) |
+| TypeScript | 100 days | ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white) | [`/days/typescript/typescript_roadmap.md`](./days/typescript/typescript_roadmap.md) |
 | Git | 16 days | ![Git](https://img.shields.io/badge/Git-F05032?logo=git&logoColor=white) | [`/days/git/git_roadmap.md`](./days/git/git_roadmap.md) |
 | AI Agents | 100 days | ![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white) | [`/days/ai-agents/ai-agents_roadmap.md`](./days/ai-agents/ai-agents_roadmap.md) |
 
@@ -54,7 +55,7 @@ This program is guided by our core values.
 
 - [`/interns/`](./interns/): Formal internship resources, onboarding templates, and workflow standards
 - [`/trainee/`](./trainee/): Open Trainee program (MasterFabric Academy) guides and projects
-- [`/days/`](./days/): Track roadmaps (Flutter, Expo, DevOps, NestJS, Next.js, Go, Git, AI Agents)
+- [`/days/`](./days/): Track roadmaps (Flutter, Expo, DevOps, NestJS, Next.js, Go, TypeScript, Git, AI Agents)
 
 ## Diagrams (Mermaid)
 
@@ -82,6 +83,7 @@ flowchart TB
   D --> N[nestjs/nestjs_roadmap.md]
   D --> NX[nextjs/nextjs_roadmap.md]
   D --> GO[go/go_roadmap.md]
+  D --> TS[typescript/typescript_roadmap.md]
   D --> G[git/git_roadmap.md]
   D --> A[ai-agents/ai-agents_roadmap.md]
 ```
