@@ -12,6 +12,9 @@ Each path is designed as a series of daily tasks to guide you from foundational 
 *   **Backend Development with NestJS:** Master the art of building efficient and scalable server-side applications with NestJS.
     *   **Roadmap:** [`/days/nestjs/nestjs_roadmap.md`](../days/nestjs/nestjs_roadmap.md)
 
+*   **Backend Development with Go:** Learn idiomatic Go—from language fundamentals and concurrency to production APIs, data, observability, and deployment.
+    *   **Roadmap:** [`/days/go/go_roadmap.md`](../days/go/go_roadmap.md)
+
 *   **AI Agent Development:** Dive into the exciting world of AI and learn to build autonomous agents.
     *   **Roadmap:** [`/days/ai-agents/ai-agents_roadmap.md`](../days/ai-agents/ai-agents_roadmap.md)
 
