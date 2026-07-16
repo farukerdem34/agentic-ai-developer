@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "masterfabric-academy": {
+      "command": "npx",
+      "args": ["tsx", "mcp/mcp.ts"],
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}
