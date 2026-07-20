@@ -1,0 +1,12 @@
+{
+  "mcp": {
+    "masterfabric-academy": {
+      "type": "local",
+      "command": [
+        "npx",
+        "tsx",
+        "mcp/mcp.ts"
+      ]
+    }
+  }
+}
